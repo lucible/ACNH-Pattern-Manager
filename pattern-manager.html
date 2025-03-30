@@ -1120,7 +1120,7 @@
         pattern.tags.forEach((tag) => {
           const tagElement = document.createElement("div");
           tagElement.className = "tag-item";
-          tagElement.innerHTML = `${tag} <span class="tag-remove">&times;</span>`;
+          tagElement.innerHTML = `${tag} <span class="tag-remove">×</span>`;
 
           // Add click event to remove tag
           tagElement
@@ -1133,29 +1133,8 @@
           tagInput.insertBefore(tagElement, tagInput.querySelector("input"));
         });
 
-        // Set up tag input event
-        const input = tagInput.querySelector("input");
-        input.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === ",") {
-            e.preventDefault();
-            const tag = input.value.trim();
-            if (tag) {
-              const tagElement = document.createElement("div");
-              tagElement.className = "tag-item";
-              tagElement.innerHTML = `${tag} <span class="tag-remove">&times;</span>`;
-
-              tagElement
-                .querySelector(".tag-remove")
-                .addEventListener("click", (e) => {
-                  e.stopPropagation();
-                  tagInput.removeChild(tagElement);
-                });
-
-              tagInput.insertBefore(tagElement, input);
-              input.value = "";
-            }
-          }
-        });
+        // Set up enhanced tag input functionality
+        setupTagInput();
 
         // Set up set selection
         const setSelect = document.getElementById("pattern-set");
@@ -1170,7 +1149,7 @@
           const option = document.createElement("option");
           option.value = set.id;
           option.textContent = set.name;
-          option.selected = pattern.setName === set.name;
+          option.selected = pattern.setId === set.id;
           setSelect.appendChild(option);
         });
 
@@ -1184,6 +1163,163 @@
         elements.patternModal.style.display = "flex";
       }
 
+      // Enhanced tag input handling
+      function setupTagInput() {
+        const tagInput = document.getElementById("tag-input");
+        const input = tagInput.querySelector("input");
+
+        // Clear existing event listeners
+        const newInput = input.cloneNode(true);
+        input.parentNode.replaceChild(newInput, input);
+
+        // Add event listeners for tag input
+        newInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            const tag = newInput.value.trim();
+            if (tag) {
+              addTag(tag);
+              newInput.value = "";
+            }
+          } else if (e.key === "Backspace" && newInput.value === "") {
+            // Remove the last tag when backspace is pressed in an empty input
+            const tagElements = tagInput.querySelectorAll(".tag-item");
+            if (tagElements.length > 0) {
+              tagInput.removeChild(tagElements[tagElements.length - 1]);
+            }
+          }
+        });
+
+        // Add autocomplete for tags
+        newInput.addEventListener("input", (e) => {
+          const value = newInput.value.trim().toLowerCase();
+          if (value.length < 2) return;
+
+          // Get all existing tags from all patterns
+          const allTags = new Set();
+          Object.values(appData.patterns).forEach((pattern) => {
+            pattern.tags.forEach((tag) => allTags.add(tag.toLowerCase()));
+          });
+
+          // Filter tags that match the input
+          const matches = Array.from(allTags)
+            .filter((tag) => tag.includes(value) && !tagExists(tag))
+            .slice(0, 5); // Limit to 5 suggestions
+
+          // Show autocomplete suggestions
+          showTagSuggestions(matches);
+        });
+
+        // Focus the input field
+        newInput.focus();
+
+        // Function to add a new tag
+        function addTag(tag) {
+          // Check if tag already exists
+          if (tagExists(tag)) return;
+
+          const tagElement = document.createElement("div");
+          tagElement.className = "tag-item";
+          tagElement.innerHTML = `${tag} <span class="tag-remove">×</span>`;
+
+          // Add click event to remove tag
+          tagElement
+            .querySelector(".tag-remove")
+            .addEventListener("click", (e) => {
+              e.stopPropagation();
+              tagInput.removeChild(tagElement);
+            });
+
+          tagInput.insertBefore(tagElement, newInput);
+        }
+
+        // Check if tag already exists in the input
+        function tagExists(tag) {
+          const tagElements = tagInput.querySelectorAll(".tag-item");
+          const normalizedTag = tag.toLowerCase();
+
+          return Array.from(tagElements).some((el) => {
+            const existingTag = el.textContent
+              .trim()
+              .replace(/\s*×\s*$/, "")
+              .toLowerCase();
+            return existingTag === normalizedTag;
+          });
+        }
+
+        // Show tag suggestions
+        function showTagSuggestions(suggestions) {
+          // Remove existing suggestions
+          const existingSuggestions =
+            document.getElementById("tag-suggestions");
+          if (existingSuggestions) {
+            existingSuggestions.remove();
+          }
+
+          if (suggestions.length === 0) return;
+
+          // Create suggestions container
+          const suggestionsContainer = document.createElement("div");
+          suggestionsContainer.id = "tag-suggestions";
+          suggestionsContainer.style.position = "absolute";
+          suggestionsContainer.style.zIndex = "1000";
+          suggestionsContainer.style.backgroundColor = "white";
+          suggestionsContainer.style.border = "1px solid var(--border-color)";
+          suggestionsContainer.style.borderRadius = "4px";
+          suggestionsContainer.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
+          suggestionsContainer.style.width = `${tagInput.offsetWidth}px`;
+          suggestionsContainer.style.maxHeight = "150px";
+          suggestionsContainer.style.overflowY = "auto";
+
+          // Position below the tag input
+          const rect = tagInput.getBoundingClientRect();
+          suggestionsContainer.style.top = `${rect.bottom + window.scrollY}px`;
+          suggestionsContainer.style.left = `${rect.left + window.scrollX}px`;
+
+          // Add suggestions
+          suggestions.forEach((suggestion) => {
+            const suggestionElement = document.createElement("div");
+            suggestionElement.textContent = suggestion;
+            suggestionElement.style.padding = "8px 12px";
+            suggestionElement.style.cursor = "pointer";
+            suggestionElement.style.borderBottom =
+              "1px solid var(--border-color)";
+
+            suggestionElement.addEventListener("mouseover", () => {
+              suggestionElement.style.backgroundColor =
+                "var(--secondary-color)";
+            });
+
+            suggestionElement.addEventListener("mouseout", () => {
+              suggestionElement.style.backgroundColor = "white";
+            });
+
+            suggestionElement.addEventListener("click", () => {
+              addTag(suggestion);
+              newInput.value = "";
+              suggestionsContainer.remove();
+              newInput.focus();
+            });
+
+            suggestionsContainer.appendChild(suggestionElement);
+          });
+
+          // Add click outside to close suggestions
+          document.addEventListener("click", function closeHandler(e) {
+            if (
+              !suggestionsContainer.contains(e.target) &&
+              e.target !== newInput
+            ) {
+              suggestionsContainer.remove();
+              document.removeEventListener("click", closeHandler);
+            }
+          });
+
+          // Add to document
+          document.body.appendChild(suggestionsContainer);
+        }
+      }
+
       // Save pattern changes
       function savePatternChanges() {
         const patternId = elements.savePatternBtn.getAttribute("data-id");
@@ -1191,16 +1327,24 @@
 
         const pattern = appData.patterns[patternId];
 
-        // Get current tags
+        // Get current tags from tag elements
         const tagElements = document.querySelectorAll("#tag-input .tag-item");
-        const tags = Array.from(tagElements).map((el) =>
-          el.textContent.trim().replace("×", "")
-        );
+        const tags = Array.from(tagElements).map((el) => {
+          // Extract tag text without the "×" remove button
+          return el.textContent.trim().replace(/\s*×\s*$/, "");
+        });
 
         // Get set selection
         const setSelect = document.getElementById("pattern-set");
         const setId = setSelect.value;
-        const setName = setId ? appData.sets[setId].name : "";
+
+        // Get previous setId to handle set removal
+        const previousSetId = pattern.setId;
+
+        // Get set name from selected option
+        const setName = setId
+          ? setSelect.options[setSelect.selectedIndex].text
+          : "";
 
         // Get set order
         const setOrder =
@@ -1211,17 +1355,46 @@
 
         // Update pattern
         pattern.tags = tags;
-        pattern.setName = setName;
         pattern.setId = setId;
+        pattern.setName = setName;
         pattern.setOrder = setOrder;
         pattern.notes = notes;
         pattern.lastModified = new Date().toISOString().split("T")[0];
 
-        // Update set data if needed
+        // Handle set changes
+
+        // If the pattern was removed from a set
+        if (previousSetId && previousSetId !== setId) {
+          // Remove pattern from previous set
+          if (appData.sets[previousSetId]) {
+            appData.sets[previousSetId].patterns = appData.sets[
+              previousSetId
+            ].patterns.filter((id) => id !== patternId);
+          }
+        }
+
+        // If the pattern was added to a set or stayed in the same set
         if (setId) {
           const set = appData.sets[setId];
-          if (!set.patterns.includes(patternId)) {
-            set.patterns.push(patternId);
+          if (set) {
+            // Add pattern to set if not already there
+            if (!set.patterns.includes(patternId)) {
+              set.patterns.push(patternId);
+            }
+
+            // Re-sort the set patterns by their setOrder
+            const patternsInSet = set.patterns
+              .map((id) => appData.patterns[id])
+              .filter((p) => p) // Filter out any null patterns
+              .sort((a, b) => (a.setOrder || 0) - (b.setOrder || 0));
+
+            // Update the setOrder values to be sequential
+            patternsInSet.forEach((p, index) => {
+              p.setOrder = index + 1;
+            });
+
+            // Update set patterns order
+            set.patterns = patternsInSet.map((p) => p.id);
           }
         }
 
@@ -1234,6 +1407,12 @@
         // Refresh views
         renderPatternGallery();
         renderSidebarFilters();
+
+        // If we're on the Sets tab, refresh the sets view
+        const activeTab = document.querySelector(".nav-tabs li.active");
+        if (activeTab && activeTab.getAttribute("data-tab") === "sets") {
+          renderSets();
+        }
 
         showNotification("Pattern updated successfully");
       }
