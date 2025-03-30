@@ -766,6 +766,7 @@ CURRENT BUG LIST (address later)
         setupAppSettings();
         renderPatternGallery();
         renderSidebarFilters();
+        enhanceFiltering();
       }
 
       // Load data from localStorage
@@ -890,6 +891,126 @@ CURRENT BUG LIST (address later)
           debounce(function () {
             appData.activeFilters.search = this.value.trim().toLowerCase();
             renderPatternGallery();
+            updateActiveFilterDisplay();
+          }, 300)
+        );
+      }
+
+      function addActiveFilterStyles() {
+        const existingStyle = document.getElementById("active-filters-style");
+        if (existingStyle) return;
+
+        const style = document.createElement("style");
+        style.id = "active-filters-style";
+        style.textContent = `
+          .active-filters-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0 15px;
+            padding: 10px;
+            background-color: var(--secondary-color);
+            border-radius: 5px;
+          }
+          
+          .active-filters-title {
+            font-weight: bold;
+            margin-right: 5px;
+          }
+          
+          .active-filters-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            flex: 1;
+          }
+          
+          .active-filter {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            padding: 4px 10px;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+          }
+          
+          .filter-remove {
+            margin-left: 5px;
+            color: #999;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1.2rem;
+          }
+          
+          .filter-remove:hover {
+            color: var(--error-color);
+          }
+          
+          .tag-filter {
+            background-color: #e8f4e8;
+            border-color: var(--primary-color);
+          }
+          
+          .creator-filter {
+            background-color: #e8eaf4;
+            border-color: #6495ed;
+          }
+          
+          .set-filter {
+            background-color: #f4eee8;
+            border-color: var(--accent-color);
+          }
+          
+          .search-filter {
+            background-color: #f0f0f0;
+          }
+          
+          .clear-all-filters {
+            padding: 4px 10px !important;
+            font-size: 0.9rem !important;
+          }
+          
+          .sidebar-list li.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 4px;
+            padding-left: 10px;
+            position: relative;
+          }
+          
+          .sidebar-list li.active .filter-count {
+            background-color: white;
+            color: var(--primary-color);
+          }
+          
+          .sidebar-list li .filter-remove {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+          }
+        `;
+
+        document.head.appendChild(style);
+      }
+
+      function enhanceFiltering() {
+        // Add styles for active filters
+        addActiveFilterStyles();
+
+        // Add initialization for active filters display
+        updateActiveFilterDisplay();
+
+        // Update the Setup event listeners function to include the pattern search input
+        const originalPatternSearchListener = elements.patternSearch.onInput;
+        elements.patternSearch.addEventListener(
+          "input",
+          debounce(function () {
+            appData.activeFilters.search = this.value.trim().toLowerCase();
+            renderPatternGallery();
+            updateActiveFilterDisplay();
           }, 300)
         );
       }
@@ -903,9 +1024,61 @@ CURRENT BUG LIST (address later)
           Object.values(appData.patterns)
         );
 
+        // Check if we have any patterns at all
+        const hasAnyPatterns = Object.keys(appData.patterns).length > 0;
+
+        // Check if any filters are active
+        const hasActiveFilters =
+          appData.activeFilters.tags.size > 0 ||
+          appData.activeFilters.creators.size > 0 ||
+          appData.activeFilters.sets.size > 0 ||
+          appData.activeFilters.search;
+
         if (filteredPatterns.length === 0) {
-          gallery.innerHTML =
-            "<p>No patterns found. Import patterns to get started.</p>";
+          // Different message based on whether there are any patterns or active filters
+          if (!hasAnyPatterns) {
+            gallery.innerHTML =
+              "<p>No patterns found. Import patterns to get started.</p>";
+          } else if (hasActiveFilters) {
+            // We have patterns, but none match the current filters
+            let message =
+              "<p>No patterns match the current filter combination.</p>";
+
+            // Build more specific message based on active filters
+            let filterDetails = [];
+
+            if (appData.activeFilters.tags.size > 0) {
+              const tags = Array.from(appData.activeFilters.tags).join(", ");
+              filterDetails.push(`tags: ${tags}`);
+            }
+
+            if (appData.activeFilters.creators.size > 0) {
+              const creators = Array.from(appData.activeFilters.creators).join(
+                ", "
+              );
+              filterDetails.push(`creators: ${creators}`);
+            }
+
+            if (appData.activeFilters.sets.size > 0) {
+              const sets = Array.from(appData.activeFilters.sets).join(", ");
+              filterDetails.push(`sets: ${sets}`);
+            }
+
+            if (appData.activeFilters.search) {
+              filterDetails.push(`search: "${appData.activeFilters.search}"`);
+            }
+
+            if (filterDetails.length > 0) {
+              message += `<p>Try adjusting or clearing your filters (${filterDetails.join(
+                "; "
+              )}).</p>`;
+            }
+
+            gallery.innerHTML = message;
+          } else {
+            // We have patterns, but none are being displayed for some other reason
+            gallery.innerHTML = "<p>No patterns available to display.</p>";
+          }
           return;
         }
 
@@ -931,7 +1104,7 @@ CURRENT BUG LIST (address later)
             return false;
           }
 
-          // Tag filters
+          // Tag filters - only apply if tags filter is active
           if (appData.activeFilters.tags.size > 0) {
             const hasMatchingTag = pattern.tags.some((tag) =>
               appData.activeFilters.tags.has(tag.toLowerCase())
@@ -939,7 +1112,7 @@ CURRENT BUG LIST (address later)
             if (!hasMatchingTag) return false;
           }
 
-          // Creator filters
+          // Creator filters - only apply if creators filter is active
           if (appData.activeFilters.creators.size > 0) {
             if (
               !appData.activeFilters.creators.has(
@@ -950,7 +1123,7 @@ CURRENT BUG LIST (address later)
             }
           }
 
-          // Set filters
+          // Set filters - only apply if sets filter is active
           if (appData.activeFilters.sets.size > 0) {
             if (
               !pattern.setName ||
@@ -1028,9 +1201,12 @@ CURRENT BUG LIST (address later)
           .sort((a, b) => b[1] - a[1])
           .map(([tag, count]) => {
             const isActive = appData.activeFilters.tags.has(tag);
-            return `<li class="${
-              isActive ? "active" : ""
-            }" data-tag="${tag}">${tag} <span class="filter-count">${count}</span></li>`;
+            return `
+        <li class="${isActive ? "active" : ""}" data-tag="${tag}">
+          ${tag} 
+          <span class="filter-count">${count}</span>
+          ${isActive ? '<span class="filter-remove">×</span>' : ""}
+        </li>`;
           })
           .join("");
 
@@ -1039,25 +1215,58 @@ CURRENT BUG LIST (address later)
 
         // Setup tag filter click events
         elements.tagFilters.querySelectorAll("li").forEach((li) => {
-          li.addEventListener("click", () => {
+          li.addEventListener("click", (e) => {
             const tag = li.getAttribute("data-tag");
             if (!tag) return;
 
-            if (appData.activeFilters.tags.has(tag)) {
+            // Check if click was on the remove button
+            if (e.target.classList.contains("filter-remove")) {
               appData.activeFilters.tags.delete(tag);
               li.classList.remove("active");
             } else {
-              appData.activeFilters.tags.add(tag);
-              li.classList.add("active");
+              // Toggle the filter - clicking an active filter deselects it
+              if (e.ctrlKey || e.metaKey) {
+                // Toggle with Ctrl/Cmd key - multi-select mode
+                if (appData.activeFilters.tags.has(tag)) {
+                  appData.activeFilters.tags.delete(tag);
+                  li.classList.remove("active");
+                } else {
+                  appData.activeFilters.tags.add(tag);
+                  li.classList.add("active");
+                }
+              } else {
+                // Single select behavior
+                if (
+                  appData.activeFilters.tags.has(tag) &&
+                  appData.activeFilters.tags.size === 1
+                ) {
+                  // If this is the only active tag, clicking it should deselect it
+                  appData.activeFilters.tags.delete(tag);
+                  li.classList.remove("active");
+                } else {
+                  // Otherwise clear other filters and select just this one
+                  appData.activeFilters.tags.clear();
+                  elements.tagFilters.querySelectorAll("li").forEach((item) => {
+                    item.classList.remove("active");
+                  });
+
+                  appData.activeFilters.tags.add(tag);
+                  li.classList.add("active");
+                }
+              }
             }
 
             renderPatternGallery();
+            updateActiveFilterDisplay();
           });
         });
 
-        // Similar implementation for creators and sets filters
+        // Similar implementation for creators and sets filters with the same pattern
         renderCreatorFilters();
         renderSetFilters();
+
+        // Update the active filter display after rendering all filters
+        updateActiveFilterDisplay();
       }
 
       // Render creator filters
@@ -1075,9 +1284,12 @@ CURRENT BUG LIST (address later)
           .sort((a, b) => b[1] - a[1])
           .map(([creator, count]) => {
             const isActive = appData.activeFilters.creators.has(creator);
-            return `<li class="${
-              isActive ? "active" : ""
-            }" data-creator="${creator}">${creator} <span class="filter-count">${count}</span></li>`;
+            return `
+        <li class="${isActive ? "active" : ""}" data-creator="${creator}">
+          ${creator} 
+          <span class="filter-count">${count}</span>
+          ${isActive ? '<span class="filter-remove">×</span>' : ""}
+        </li>`;
           })
           .join("");
 
@@ -1086,19 +1298,51 @@ CURRENT BUG LIST (address later)
 
         // Setup creator filter click events
         elements.creatorFilters.querySelectorAll("li").forEach((li) => {
-          li.addEventListener("click", () => {
+          li.addEventListener("click", (e) => {
             const creator = li.getAttribute("data-creator");
             if (!creator) return;
 
-            if (appData.activeFilters.creators.has(creator)) {
+            // Check if click was on the remove button
+            if (e.target.classList.contains("filter-remove")) {
               appData.activeFilters.creators.delete(creator);
               li.classList.remove("active");
             } else {
-              appData.activeFilters.creators.add(creator);
-              li.classList.add("active");
+              // Toggle the filter - clicking an active filter deselects it
+              if (e.ctrlKey || e.metaKey) {
+                // Toggle with Ctrl/Cmd key - multi-select mode
+                if (appData.activeFilters.creators.has(creator)) {
+                  appData.activeFilters.creators.delete(creator);
+                  li.classList.remove("active");
+                } else {
+                  appData.activeFilters.creators.add(creator);
+                  li.classList.add("active");
+                }
+              } else {
+                // Single select behavior
+                if (
+                  appData.activeFilters.creators.has(creator) &&
+                  appData.activeFilters.creators.size === 1
+                ) {
+                  // If this is the only active creator, clicking it should deselect it
+                  appData.activeFilters.creators.delete(creator);
+                  li.classList.remove("active");
+                } else {
+                  // Otherwise clear other filters and select just this one
+                  appData.activeFilters.creators.clear();
+                  elements.creatorFilters
+                    .querySelectorAll("li")
+                    .forEach((item) => {
+                      item.classList.remove("active");
+                    });
+
+                  appData.activeFilters.creators.add(creator);
+                  li.classList.add("active");
+                }
+              }
             }
 
             renderPatternGallery();
+            updateActiveFilterDisplay();
           });
         });
       }
@@ -1117,9 +1361,12 @@ CURRENT BUG LIST (address later)
           .sort((a, b) => b[1] - a[1])
           .map(([setName, count]) => {
             const isActive = appData.activeFilters.sets.has(setName);
-            return `<li class="${
-              isActive ? "active" : ""
-            }" data-set="${setName}">${setName} <span class="filter-count">${count}</span></li>`;
+            return `
+        <li class="${isActive ? "active" : ""}" data-set="${setName}">
+          ${setName} 
+          <span class="filter-count">${count}</span>
+          ${isActive ? '<span class="filter-remove">×</span>' : ""}
+        </li>`;
           })
           .join("");
 
@@ -1128,20 +1375,176 @@ CURRENT BUG LIST (address later)
 
         // Setup set filter click events
         elements.setFilters.querySelectorAll("li").forEach((li) => {
-          li.addEventListener("click", () => {
+          li.addEventListener("click", (e) => {
             const setName = li.getAttribute("data-set");
             if (!setName) return;
 
-            if (appData.activeFilters.sets.has(setName)) {
+            // Check if click was on the remove button
+            if (e.target.classList.contains("filter-remove")) {
               appData.activeFilters.sets.delete(setName);
               li.classList.remove("active");
             } else {
-              appData.activeFilters.sets.add(setName);
-              li.classList.add("active");
+              // Toggle the filter - clicking an active filter deselects it
+              if (e.ctrlKey || e.metaKey) {
+                // Toggle with Ctrl/Cmd key - multi-select mode
+                if (appData.activeFilters.sets.has(setName)) {
+                  appData.activeFilters.sets.delete(setName);
+                  li.classList.remove("active");
+                } else {
+                  appData.activeFilters.sets.add(setName);
+                  li.classList.add("active");
+                }
+              } else {
+                // Single select behavior
+                if (
+                  appData.activeFilters.sets.has(setName) &&
+                  appData.activeFilters.sets.size === 1
+                ) {
+                  // If this is the only active set, clicking it should deselect it
+                  appData.activeFilters.sets.delete(setName);
+                  li.classList.remove("active");
+                } else {
+                  // Otherwise clear other filters and select just this one
+                  appData.activeFilters.sets.clear();
+                  elements.setFilters.querySelectorAll("li").forEach((item) => {
+                    item.classList.remove("active");
+                  });
+
+                  appData.activeFilters.sets.add(setName);
+                  li.classList.add("active");
+                }
+              }
             }
 
             renderPatternGallery();
+            updateActiveFilterDisplay();
           });
+        });
+      }
+
+      // Add a new function to show active filters
+      function updateActiveFilterDisplay() {
+        // Create or get the active filters container
+        let activeFiltersContainer = document.getElementById(
+          "active-filters-container"
+        );
+        if (!activeFiltersContainer) {
+          // Create the container if it doesn't exist
+          activeFiltersContainer = document.createElement("div");
+          activeFiltersContainer.id = "active-filters-container";
+          activeFiltersContainer.className = "active-filters-container";
+
+          // Insert it after the search bar
+          const searchBar = document.querySelector(".search-bar");
+          searchBar.parentNode.insertBefore(
+            activeFiltersContainer,
+            searchBar.nextSibling
+          );
+        }
+
+        // Check if we have any active filters
+        const hasActiveFilters =
+          appData.activeFilters.tags.size > 0 ||
+          appData.activeFilters.creators.size > 0 ||
+          appData.activeFilters.sets.size > 0 ||
+          appData.activeFilters.search;
+
+        // Clear the container
+        activeFiltersContainer.innerHTML = "";
+
+        // If no active filters, hide the container
+        if (!hasActiveFilters) {
+          activeFiltersContainer.style.display = "none";
+          return;
+        }
+
+        // Show the container
+        activeFiltersContainer.style.display = "flex";
+
+        // Add title
+        const title = document.createElement("div");
+        title.className = "active-filters-title";
+        title.textContent = "Active Filters:";
+        activeFiltersContainer.appendChild(title);
+
+        // Add filters list
+        const filtersList = document.createElement("div");
+        filtersList.className = "active-filters-list";
+
+        // Add search filter if active
+        if (appData.activeFilters.search) {
+          const searchFilter = document.createElement("span");
+          searchFilter.className = "active-filter search-filter";
+          searchFilter.innerHTML = `Search: "${appData.activeFilters.search}" <span class="filter-remove" data-type="search">×</span>`;
+          filtersList.appendChild(searchFilter);
+        }
+
+        // Add tag filters
+        appData.activeFilters.tags.forEach((tag) => {
+          const tagFilter = document.createElement("span");
+          tagFilter.className = "active-filter tag-filter";
+          tagFilter.innerHTML = `Tag: ${tag} <span class="filter-remove" data-type="tag" data-value="${tag}">×</span>`;
+          filtersList.appendChild(tagFilter);
+        });
+
+        // Add creator filters
+        appData.activeFilters.creators.forEach((creator) => {
+          const creatorFilter = document.createElement("span");
+          creatorFilter.className = "active-filter creator-filter";
+          creatorFilter.innerHTML = `Creator: ${creator} <span class="filter-remove" data-type="creator" data-value="${creator}">×</span>`;
+          filtersList.appendChild(creatorFilter);
+        });
+
+        // Add set filters
+        appData.activeFilters.sets.forEach((set) => {
+          const setFilter = document.createElement("span");
+          setFilter.className = "active-filter set-filter";
+          setFilter.innerHTML = `Set: ${set} <span class="filter-remove" data-type="set" data-value="${set}">×</span>`;
+          filtersList.appendChild(setFilter);
+        });
+
+        activeFiltersContainer.appendChild(filtersList);
+
+        // Add clear all button
+        const clearAll = document.createElement("button");
+        clearAll.className = "btn btn-secondary clear-all-filters";
+        clearAll.textContent = "Clear All";
+        activeFiltersContainer.appendChild(clearAll);
+
+        // Add event listeners for remove buttons
+        activeFiltersContainer
+          .querySelectorAll(".filter-remove")
+          .forEach((removeBtn) => {
+            removeBtn.addEventListener("click", (e) => {
+              const type = e.target.getAttribute("data-type");
+              const value = e.target.getAttribute("data-value");
+
+              if (type === "search") {
+                appData.activeFilters.search = "";
+                document.getElementById("pattern-search").value = "";
+              } else if (type === "tag") {
+                appData.activeFilters.tags.delete(value);
+              } else if (type === "creator") {
+                appData.activeFilters.creators.delete(value);
+              } else if (type === "set") {
+                appData.activeFilters.sets.delete(value);
+              }
+
+              renderPatternGallery();
+              renderSidebarFilters(); // This will also call updateActiveFilterDisplay again
+            });
+          });
+
+        // Add event listener for clear all button
+        clearAll.addEventListener("click", () => {
+          appData.activeFilters.tags.clear();
+          appData.activeFilters.creators.clear();
+          appData.activeFilters.sets.clear();
+          appData.activeFilters.search = "";
+          document.getElementById("pattern-search").value = "";
+
+          renderPatternGallery();
+          renderSidebarFilters();
         });
       }
 
@@ -2373,13 +2776,14 @@ CURRENT BUG LIST (address later)
         const creator = appData.creators[creatorId];
         if (!creator) return;
 
-        // Clear all filters
+        // Clear all filters first
         appData.activeFilters.tags.clear();
         appData.activeFilters.sets.clear();
+        appData.activeFilters.creators.clear();
         appData.activeFilters.search = "";
+        document.getElementById("pattern-search").value = "";
 
         // Add creator filter
-        appData.activeFilters.creators.clear();
         appData.activeFilters.creators.add(creator.name.toLowerCase());
 
         // Switch to patterns tab
@@ -2390,7 +2794,10 @@ CURRENT BUG LIST (address later)
           }
         });
 
-        // Update sidebar filters
+        // Make sure to render the gallery with the new filter
+        renderPatternGallery();
+
+        // Update sidebar filters to reflect the active filter
         renderSidebarFilters();
       }
 
