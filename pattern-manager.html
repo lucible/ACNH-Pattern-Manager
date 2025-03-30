@@ -1,3 +1,8 @@
+<!--
+CURRENT BUG LIST (address later)
+- When reverting back to Base64 encoded thumbnails from dynamic loading,
+  thumbnails do not properly generate (all patterns show "No Thumbnail").
+-->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -720,6 +725,12 @@
         },
       };
 
+      // Global settings object
+      const appSettings = {
+        storeThumbnailsAsBase64: true,
+        lastImportDirectory: "",
+      };
+
       // DOM Elements
       const elements = {
         tabs: document.querySelectorAll(".nav-tabs li"),
@@ -749,8 +760,10 @@
       // Initialize the application
       function initApp() {
         loadDataFromLocalStorage();
+        loadAppSettings();
         setupEventListeners();
         setupMetadataImport();
+        setupAppSettings();
         renderPatternGallery();
         renderSidebarFilters();
       }
@@ -781,7 +794,37 @@
       // Save data to localStorage
       function saveDataToLocalStorage() {
         try {
-          localStorage.setItem("acPatterns", JSON.stringify(appData.patterns));
+          // If not storing base64 thumbnails, create a copy of patterns without the base64 data
+          if (!appSettings.storeThumbnailsAsBase64) {
+            const patternsForStorage = {};
+
+            for (const id in appData.patterns) {
+              const pattern = { ...appData.patterns[id] };
+
+              // Clear base64 data before storing
+              if (
+                pattern.thumbnailPath &&
+                pattern.thumbnailPath.startsWith("data:")
+              ) {
+                pattern.thumbnailPath = null;
+              }
+
+              patternsForStorage[id] = pattern;
+            }
+
+            localStorage.setItem(
+              "acPatterns",
+              JSON.stringify(patternsForStorage)
+            );
+          } else {
+            // Store as is with base64 data
+            localStorage.setItem(
+              "acPatterns",
+              JSON.stringify(appData.patterns)
+            );
+          }
+
+          // Save other data as before
           localStorage.setItem("acCreators", JSON.stringify(appData.creators));
           localStorage.setItem("acSets", JSON.stringify(appData.sets));
           localStorage.setItem(
@@ -927,27 +970,38 @@
         card.className = "pattern-card";
         card.setAttribute("data-id", pattern.id);
 
-        // Default thumbnail if none exists
-        const thumbnailPath =
-          pattern.thumbnailPath ||
-          "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
+        // Determine thumbnail source
+        let thumbnailSrc;
+
+        if (appSettings.storeThumbnailsAsBase64) {
+          // Use base64 thumbnail if available
+          thumbnailSrc = pattern.thumbnailPath;
+        } else {
+          // Try to use original file path
+          thumbnailSrc = pattern.originalFilePath;
+        }
+
+        // Default thumbnail if none available
+        if (!thumbnailSrc) {
+          thumbnailSrc =
+            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
+        }
 
         const html = `
-                <img class="pattern-thumbnail" src="${thumbnailPath}" alt="${
+    <img class="pattern-thumbnail" src="${thumbnailSrc}" alt="${
           pattern.patternName
-        }">
-                <div class="pattern-info">
-                    <div class="pattern-name">${pattern.patternName}</div>
-                    <div class="pattern-creator">by ${pattern.creatorName} of ${
+        }" 
+         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+'">
+    <div class="pattern-info">
+      <div class="pattern-name">${pattern.patternName}</div>
+      <div class="pattern-creator">by ${pattern.creatorName} of ${
           pattern.townName
         }</div>
-                    <div class="tag-list">
-                        ${pattern.tags
-                          .map((tag) => `<span class="tag">${tag}</span>`)
-                          .join("")}
-                    </div>
-                </div>
-            `;
+      <div class="tag-list">
+        ${pattern.tags.map((tag) => `<span class="tag">${tag}</span>`).join("")}
+      </div>
+    </div>
+  `;
 
         card.innerHTML = html;
 
@@ -1096,13 +1150,30 @@
         const pattern = appData.patterns[patternId];
         if (!pattern) return;
 
-        // Set pattern details in modal
-        document.getElementById("modal-pattern-img").src =
-          pattern.thumbnailPath ||
-          "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
+        // Determine thumbnail source similar to createPatternCard
+        let thumbnailSrc;
+
+        if (appSettings.storeThumbnailsAsBase64) {
+          thumbnailSrc = pattern.thumbnailPath;
+        } else {
+          thumbnailSrc = pattern.originalFilePath;
+        }
+
+        if (!thumbnailSrc) {
+          thumbnailSrc =
+            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
+        }
+
+        // Set pattern details in modal (using the determined thumbnail source)
+        document.getElementById("modal-pattern-img").src = thumbnailSrc;
+        document.getElementById("modal-pattern-img").onerror = function () {
+          this.src =
+            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
+        };
         document
           .getElementById("modal-pattern-img")
           .classList.add("pixel-art-image");
+
         document.getElementById("pattern-name").value = pattern.patternName;
         document.getElementById("creator-name").value = pattern.creatorName;
         document.getElementById("town-name").value = pattern.townName;
@@ -2601,6 +2672,445 @@
         return date.toLocaleDateString();
       }
 
+      // Load app settings from localStorage
+      function loadAppSettings() {
+        try {
+          const storedSettings = localStorage.getItem("acAppSettings");
+          if (storedSettings) {
+            Object.assign(appSettings, JSON.parse(storedSettings));
+          }
+        } catch (error) {
+          console.error("Error loading app settings:", error);
+        }
+      }
+
+      // Save app settings to localStorage
+      function saveAppSettings() {
+        try {
+          localStorage.setItem("acAppSettings", JSON.stringify(appSettings));
+        } catch (error) {
+          console.error("Error saving app settings:", error);
+          showNotification("Error saving app settings", "error");
+        }
+      }
+
+      // Setup app settings UI
+      function setupAppSettings() {
+        // Create settings button in header
+        const header = document.querySelector("header");
+        const settingsBtn = document.createElement("button");
+        settingsBtn.id = "settings-btn";
+        settingsBtn.className = "btn btn-secondary";
+        settingsBtn.textContent = "App Settings";
+        header.querySelector("div:last-child").prepend(settingsBtn);
+
+        // Create settings modal
+        const settingsModal = document.createElement("div");
+        settingsModal.className = "modal-backdrop";
+        settingsModal.id = "settings-modal";
+        settingsModal.innerHTML = `
+    <div class="modal">
+      <button class="modal-close">&times;</button>
+      <h2 class="modal-title">App Settings</h2>
+      
+      <div class="settings-section">
+        <h3>Storage Usage</h3>
+        <div class="storage-meter-container">
+          <div class="storage-meter">
+            <div class="storage-meter-fill" id="storage-meter-fill"></div>
+          </div>
+          <div class="storage-meter-labels">
+            <span class="storage-used" id="storage-used">0 KB</span> / <span id="storage-total">5 MB</span>
+          </div>
+        </div>
+        <div class="storage-breakdown">
+          <p>Metadata: <span id="metadata-size">0 KB</span></p>
+          <p>Thumbnails: <span id="thumbnails-size">0 KB</span></p>
+        </div>
+      </div>
+      
+      <div class="settings-section">
+        <h3>Thumbnail Storage</h3>
+        <div class="form-group">
+          <label>
+            <input type="radio" name="thumbnail-storage" id="store-base64" ${
+              appSettings.storeThumbnailsAsBase64 ? "checked" : ""
+            }>
+            Store thumbnails as base64 (works offline, uses more storage)
+          </label>
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="radio" name="thumbnail-storage" id="store-paths" ${
+              !appSettings.storeThumbnailsAsBase64 ? "checked" : ""
+            }>
+            Load thumbnails dynamically from files (saves storage, requires file access)
+          </label>
+        </div>
+        <div id="storage-switch-warning" class="warning-message" style="display: none;">
+          Switching storage methods may take some time if you have many patterns.
+        </div>
+      </div>
+      
+      <button class="btn" id="save-settings-btn">Save Settings</button>
+    </div>
+  `;
+        document.body.appendChild(settingsModal);
+
+        // Add styles for settings UI
+        const style = document.createElement("style");
+        style.textContent = `
+    .settings-section {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .storage-meter-container {
+      margin: 15px 0;
+    }
+    .storage-meter {
+      height: 20px;
+      background-color: #f0f0f0;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 5px;
+    }
+    .storage-meter-fill {
+      height: 100%;
+      background-color: var(--primary-color);
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .storage-meter-labels {
+      display: flex;
+      justify-content: flex-end;
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .storage-breakdown {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .warning-message {
+      background-color: rgba(243, 156, 18, 0.1);
+      border-left: 3px solid #f39c12;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 0.9rem;
+    }
+  `;
+        document.head.appendChild(style);
+
+        // Add event listeners
+        settingsBtn.addEventListener("click", () => {
+          updateStorageUsage();
+          settingsModal.style.display = "flex";
+        });
+
+        settingsModal
+          .querySelector(".modal-close")
+          .addEventListener("click", () => {
+            settingsModal.style.display = "none";
+          });
+
+        document
+          .getElementById("store-base64")
+          .addEventListener("change", function () {
+            document.getElementById("storage-switch-warning").style.display =
+              this.checked && !appSettings.storeThumbnailsAsBase64
+                ? "block"
+                : "none";
+          });
+
+        document
+          .getElementById("store-paths")
+          .addEventListener("change", function () {
+            document.getElementById("storage-switch-warning").style.display =
+              this.checked && appSettings.storeThumbnailsAsBase64
+                ? "block"
+                : "none";
+          });
+
+        document
+          .getElementById("save-settings-btn")
+          .addEventListener("click", async () => {
+            const newStoreAsBase64 =
+              document.getElementById("store-base64").checked;
+
+            // If storage method is changing, we need to convert thumbnails
+            if (newStoreAsBase64 !== appSettings.storeThumbnailsAsBase64) {
+              showLoader("Converting thumbnails...");
+              try {
+                if (newStoreAsBase64) {
+                  await convertToBase64Thumbnails();
+                } else {
+                  await convertToFilePaths();
+                }
+                appSettings.storeThumbnailsAsBase64 = newStoreAsBase64;
+                saveAppSettings();
+                saveDataToLocalStorage();
+                showNotification("Settings saved and thumbnails converted");
+              } catch (error) {
+                console.error("Error converting thumbnails:", error);
+                showNotification("Error converting thumbnails", "error");
+              } finally {
+                hideLoader();
+              }
+            } else {
+              // Just save settings if nothing is changing
+              appSettings.storeThumbnailsAsBase64 = newStoreAsBase64;
+              saveAppSettings();
+              showNotification("Settings saved");
+            }
+
+            settingsModal.style.display = "none";
+            renderPatternGallery();
+          });
+      }
+
+      // Update storage usage display
+      function updateStorageUsage() {
+        try {
+          // Calculate sizes
+          const patternsJson = JSON.stringify(appData.patterns);
+          const creatorsJson = JSON.stringify(appData.creators);
+          const setsJson = JSON.stringify(appData.sets);
+          const processedFilesJson = JSON.stringify([
+            ...appData.processedFiles,
+          ]);
+
+          // Calculate size of metadata (without thumbnails)
+          const patternsWithoutThumbnails = JSON.parse(patternsJson);
+          for (const id in patternsWithoutThumbnails) {
+            if (appSettings.storeThumbnailsAsBase64) {
+              patternsWithoutThumbnails[id].thumbnailPath = null;
+            }
+          }
+
+          const metadataSize =
+            JSON.stringify(patternsWithoutThumbnails).length +
+            creatorsJson.length +
+            setsJson.length +
+            processedFilesJson.length;
+
+          // Calculate thumbnails size
+          const thumbnailsSize = appSettings.storeThumbnailsAsBase64
+            ? patternsJson.length -
+              JSON.stringify(patternsWithoutThumbnails).length
+            : 0;
+
+          // Total used size
+          const totalUsed = metadataSize + thumbnailsSize;
+
+          // Rough estimate of localStorage capacity (5MB is common)
+          const totalCapacity = 5 * 1024 * 1024;
+
+          // Update UI
+          document.getElementById("metadata-size").textContent =
+            formatBytes(metadataSize);
+          document.getElementById("thumbnails-size").textContent =
+            formatBytes(thumbnailsSize);
+          document.getElementById("storage-used").textContent =
+            formatBytes(totalUsed);
+          document.getElementById(
+            "storage-meter-fill"
+          ).style.width = `${Math.min(
+            100,
+            (totalUsed / totalCapacity) * 100
+          )}%`;
+
+          // Change color based on usage
+          const fill = document.getElementById("storage-meter-fill");
+          if (totalUsed / totalCapacity > 0.9) {
+            fill.style.backgroundColor = "var(--error-color)";
+          } else if (totalUsed / totalCapacity > 0.7) {
+            fill.style.backgroundColor = "#f39c12"; // Orange warning color
+          } else {
+            fill.style.backgroundColor = "var(--primary-color)";
+          }
+        } catch (error) {
+          console.error("Error calculating storage usage:", error);
+        }
+      }
+
+      // Format bytes to human-readable format
+      function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return "0 Bytes";
+
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return (
+          parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
+        );
+      }
+
+      // Create loading overlay
+      function showLoader(message = "Loading...") {
+        let loader = document.getElementById("app-loader");
+        if (!loader) {
+          loader = document.createElement("div");
+          loader.id = "app-loader";
+          loader.className = "loader-overlay";
+          loader.innerHTML = `
+      <div class="loader-content">
+        <div class="loading"></div>
+        <div class="loader-message">${message}</div>
+      </div>
+    `;
+          document.body.appendChild(loader);
+
+          // Add styles if not already added
+          if (!document.getElementById("loader-styles")) {
+            const style = document.createElement("style");
+            style.id = "loader-styles";
+            style.textContent = `
+        .loader-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(255, 255, 255, 0.8);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 9999;
+        }
+        .loader-content {
+          background-color: white;
+          padding: 20px;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          text-align: center;
+        }
+        .loader-message {
+          margin-top: 10px;
+          font-weight: bold;
+        }
+      `;
+            document.head.appendChild(style);
+          }
+        } else {
+          loader.querySelector(".loader-message").textContent = message;
+          loader.style.display = "flex";
+        }
+      }
+
+      function hideLoader() {
+        const loader = document.getElementById("app-loader");
+        if (loader) {
+          loader.style.display = "none";
+        }
+      }
+
+      // Create a small resized thumbnail from an image file
+      function createResizedThumbnail(file) {
+        return new Promise((resolve, reject) => {
+          if (!file) {
+            reject(new Error("No file provided"));
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const img = new Image();
+            img.onload = function () {
+              // Create a small thumbnail
+              const canvas = document.createElement("canvas");
+              const ctx = canvas.getContext("2d");
+
+              // Set to 32x32 for Animal Crossing patterns
+              canvas.width = 32;
+              canvas.height = 32;
+
+              // Use pixelated rendering
+              ctx.imageSmoothingEnabled = false;
+
+              // Draw the image
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+              // Get as data URL (base64)
+              const thumbnailDataUrl = canvas.toDataURL("image/png");
+              resolve(thumbnailDataUrl);
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Convert all thumbnails to base64 (when switching from file paths)
+      async function convertToBase64Thumbnails() {
+        const patterns = Object.values(appData.patterns);
+        const totalPatterns = patterns.length;
+        let processedPatterns = 0;
+
+        for (const pattern of patterns) {
+          // Skip if already has base64 data
+          if (
+            pattern.thumbnailPath &&
+            pattern.thumbnailPath.startsWith("data:")
+          ) {
+            processedPatterns++;
+            continue;
+          }
+
+          // Try to load from original file path
+          if (pattern.originalFilePath) {
+            try {
+              // This approach with fetch might not work with file:/// URLs due to security restrictions
+              // Try to use relative paths that might work
+              const response = await fetch(pattern.originalFilePath);
+              const blob = await response.blob();
+
+              // Create thumbnail from loaded file
+              pattern.thumbnailPath = await createResizedThumbnail(blob);
+            } catch (error) {
+              console.error(
+                `Could not load image from path: ${pattern.originalFilePath}`,
+                error
+              );
+              pattern.thumbnailPath = null; // Reset if we couldn't load
+            }
+          }
+
+          processedPatterns++;
+          if (processedPatterns % 10 === 0) {
+            showLoader(
+              `Converting thumbnails: ${processedPatterns}/${totalPatterns}`
+            );
+          }
+        }
+      }
+
+      // Convert all thumbnails to file paths (when switching from base64)
+      async function convertToFilePaths() {
+        const patterns = Object.values(appData.patterns);
+
+        for (const pattern of patterns) {
+          // If we have base64 data, store the reference to original file and clear base64 data
+          if (
+            pattern.thumbnailPath &&
+            pattern.thumbnailPath.startsWith("data:")
+          ) {
+            // Keep the originalFilePath but clear the base64 thumbnailPath
+            // We'll use originalFilePath when loading
+            if (!pattern.originalFilePath) {
+              // If somehow we don't have the original path, keep base64
+              pattern.originalFilePath = pattern.thumbnailPath;
+            } else {
+              pattern.thumbnailPath = null;
+            }
+          }
+        }
+      }
+
       // Import patterns
       async function importPatterns() {
         const fileInput = document.getElementById("pattern-folder");
@@ -2899,7 +3409,16 @@
             reject(new Error("Error loading image for hashing"));
           };
 
-          img.src = imageSrc;
+          // Handle both base64 and file path sources
+          if (typeof imageSrc === "string") {
+            // If it's a string (either base64 or file path)
+            img.src = imageSrc;
+          } else if (imageSrc instanceof Blob) {
+            // If it's a blob or file object
+            img.src = URL.createObjectURL(imageSrc);
+          } else {
+            reject(new Error("Unsupported image source type"));
+          }
         });
       }
 
@@ -2920,7 +3439,8 @@
             const pattern = {
               id: patternId,
               fileName: nhdFile.name,
-              thumbnailPath: pngFile ? URL.createObjectURL(pngFile) : null,
+              thumbnailPath: null, // Will be set below based on storage preference
+              originalFilePath: null, // Store original file path for reference
 
               // Metadata from .nhd file
               patternName: metadata.patternName || "Unnamed Pattern",
@@ -2940,17 +3460,42 @@
               dateAdded: new Date().toISOString().split("T")[0],
               lastModified: new Date().toISOString().split("T")[0],
 
-              // Hash for duplicate detection (will be added below)
+              // Hash for duplicate detection
               thumbnailHash: null,
             };
 
-            // Generate hash for the thumbnail if available
+            // Handle thumbnail based on storage preference
             if (pngFile) {
+              // Always store the original file path for reference
+              pattern.originalFilePath =
+                pngFile.webkitRelativePath || pngFile.name;
+
+              // If storing as base64, create resized thumbnail
+              if (appSettings.storeThumbnailsAsBase64) {
+                try {
+                  pattern.thumbnailPath = await createResizedThumbnail(pngFile);
+                } catch (error) {
+                  console.error("Error creating thumbnail:", error);
+                  pattern.thumbnailPath = null;
+                }
+              }
+
+              // Generate hash for the thumbnail
               try {
+                // Use either the base64 or the original file for hashing
+                const imageForHashing =
+                  pattern.thumbnailPath || URL.createObjectURL(pngFile);
                 pattern.thumbnailHash = await generateThumbnailHash(
-                  pattern.thumbnailPath
+                  imageForHashing
                 );
-                console.log(`Generated hash for ${pattern.patternName}`);
+
+                // If we created a blob URL for hashing, revoke it to free memory
+                if (
+                  !pattern.thumbnailPath &&
+                  imageForHashing.startsWith("blob:")
+                ) {
+                  URL.revokeObjectURL(imageForHashing);
+                }
               } catch (hashError) {
                 console.error("Error generating hash:", hashError);
                 // Continue even if hash generation fails
@@ -3188,6 +3733,52 @@
               );
             }
 
+            // Import app settings if present
+            if (importData.appSettings) {
+              Object.assign(appSettings, importData.appSettings);
+              saveAppSettings();
+            }
+
+            // Process patterns to handle different thumbnail storage formats
+            // Handle both new format (with thumbnailPathBase64 and thumbnailPathFile)
+            // and old format (with just thumbnailPath)
+            for (const id in importData.patterns) {
+              const pattern = importData.patterns[id];
+
+              // If the exported data used the new format with separate base64 and file paths
+              if (pattern.thumbnailPathBase64 || pattern.thumbnailPathFile) {
+                if (
+                  appSettings.storeThumbnailsAsBase64 &&
+                  pattern.thumbnailPathBase64
+                ) {
+                  pattern.thumbnailPath = pattern.thumbnailPathBase64;
+                } else {
+                  pattern.thumbnailPath = null;
+                }
+
+                if (pattern.thumbnailPathFile) {
+                  pattern.originalFilePath = pattern.thumbnailPathFile;
+                }
+
+                // Clean up temporary properties
+                delete pattern.thumbnailPathBase64;
+                delete pattern.thumbnailPathFile;
+              }
+              // If using old format, make sure it's compatible with current settings
+              else if (pattern.thumbnailPath) {
+                // If path is base64 but we're not storing base64, clear it and keep originalFilePath
+                if (
+                  pattern.thumbnailPath.startsWith("data:") &&
+                  !appSettings.storeThumbnailsAsBase64
+                ) {
+                  pattern.originalFilePath =
+                    pattern.originalFilePath || pattern.thumbnailPath;
+                  pattern.thumbnailPath = null;
+                }
+                // If path is not base64 and we are storing base64, it will be loaded later on demand
+              }
+            }
+
             // Backup current data
             const backupData = {
               patterns: { ...appData.patterns },
@@ -3411,11 +4002,28 @@
       // Export metadata
       function exportMetadata() {
         const exportData = {
-          patterns: appData.patterns,
+          patterns: {},
           creators: appData.creators,
           sets: appData.sets,
           processedFiles: [...appData.processedFiles],
+          appSettings: appSettings,
         };
+
+        // Export patterns with both base64 and file paths for maximum compatibility
+        for (const id in appData.patterns) {
+          exportData.patterns[id] = { ...appData.patterns[id] };
+
+          // If we have base64 data and original file path, include both
+          if (
+            appData.patterns[id].thumbnailPath &&
+            appData.patterns[id].originalFilePath
+          ) {
+            exportData.patterns[id].thumbnailPathBase64 =
+              appData.patterns[id].thumbnailPath;
+            exportData.patterns[id].thumbnailPathFile =
+              appData.patterns[id].originalFilePath;
+          }
+        }
 
         // Create download link
         const dataStr = JSON.stringify(exportData);
@@ -3444,9 +4052,13 @@
           '<div class="loading"></div> Scanning for duplicates...';
 
         try {
-          // Get all patterns with thumbnails and hashes
+          // Get all patterns with thumbnails or hashes
           const patterns = Object.values(appData.patterns).filter(
-            (p) => p.thumbnailPath && p.thumbnailHash
+            (p) =>
+              p.thumbnailHash ||
+              (appSettings.storeThumbnailsAsBase64
+                ? p.thumbnailPath
+                : p.originalFilePath)
           );
 
           if (patterns.length === 0) {
@@ -3456,9 +4068,7 @@
           }
 
           // Generate hashes for patterns that don't have them yet
-          const patternsWithoutHash = Object.values(appData.patterns).filter(
-            (p) => p.thumbnailPath && !p.thumbnailHash
-          );
+          const patternsWithoutHash = patterns.filter((p) => !p.thumbnailHash);
 
           if (patternsWithoutHash.length > 0) {
             duplicatesContainer.innerHTML =
@@ -3466,9 +4076,16 @@
 
             for (const pattern of patternsWithoutHash) {
               try {
-                pattern.thumbnailHash = await generateThumbnailHash(
-                  pattern.thumbnailPath
-                );
+                // Use the appropriate thumbnail source
+                const thumbnailSrc = appSettings.storeThumbnailsAsBase64
+                  ? pattern.thumbnailPath
+                  : pattern.originalFilePath;
+
+                if (thumbnailSrc) {
+                  pattern.thumbnailHash = await generateThumbnailHash(
+                    thumbnailSrc
+                  );
+                }
               } catch (error) {
                 console.error(
                   `Error generating hash for pattern ${pattern.id}:`,
@@ -3483,7 +4100,7 @@
 
           // Group patterns by hash
           const hashedPatterns = {};
-          Object.values(appData.patterns)
+          patterns
             .filter((p) => p.thumbnailHash)
             .forEach((pattern) => {
               if (!hashedPatterns[pattern.thumbnailHash]) {
@@ -3603,7 +4220,7 @@
                   if (checkedRadio) {
                     const primaryId = checkedRadio.value;
                     const setIds = duplicates[setIndex];
-                    mergeDuplicatesEnhanced(setIds, primaryId);
+                    mergeDuplicates(setIds, primaryId);
                   } else {
                     showNotification(
                       "Please select a primary pattern",
@@ -3816,14 +4433,18 @@
       }
 
       // Merge duplicate patterns
-      function mergeDuplicates(patternIds) {
+      async function mergeDuplicates(patternIds, primaryId) {
         if (!patternIds || patternIds.length < 2) return;
 
-        // Keep the first pattern as the "primary" one
-        const primaryId = patternIds[0];
+        // Find primary pattern
         const primary = appData.patterns[primaryId];
-
         if (!primary) return;
+
+        // Move primary to beginning of array (if not already)
+        patternIds = [
+          primaryId,
+          ...patternIds.filter((id) => id !== primaryId),
+        ];
 
         // Collect tags from all duplicates
         const allTags = new Set(primary.tags);
@@ -3858,6 +4479,18 @@
             primary.notes = primary.notes
               ? primary.notes + "\n\nFrom merged pattern: " + duplicate.notes
               : "From merged pattern: " + duplicate.notes;
+          }
+
+          // Keep thumbnail data if primary doesn't have it
+          if (appSettings.storeThumbnailsAsBase64) {
+            if (!primary.thumbnailPath && duplicate.thumbnailPath) {
+              primary.thumbnailPath = duplicate.thumbnailPath;
+            }
+          }
+
+          // Keep original file path if primary doesn't have it
+          if (!primary.originalFilePath && duplicate.originalFilePath) {
+            primary.originalFilePath = duplicate.originalFilePath;
           }
 
           // Remove from creator's patterns
