@@ -2846,9 +2846,65 @@
         });
       }
 
+      // Generate a simple hash of an image
+      async function generateThumbnailHash(imageSrc) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+
+          // Set canvas to a standard size (32x32) for consistent hashing
+          canvas.width = 32;
+          canvas.height = 32;
+
+          img.onload = function () {
+            try {
+              // Draw image on canvas
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+              // Get pixel data
+              const imageData = ctx.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+              ).data;
+
+              // Create a string from pixel data
+              let hash = "";
+
+              // Sample every 4th pixel (for performance) and use RGB values
+              for (let i = 0; i < imageData.length; i += 16) {
+                if (imageData[i + 3] < 128) {
+                  // Transparent pixel
+                  hash += "T";
+                } else {
+                  // For colored pixels, quantize to reduce sensitivity to minor variations
+                  const r = Math.floor(imageData[i] / 32);
+                  const g = Math.floor(imageData[i + 1] / 32);
+                  const b = Math.floor(imageData[i + 2] / 32);
+                  hash += `${r}${g}${b}`;
+                }
+              }
+
+              resolve(hash);
+            } catch (error) {
+              reject(error);
+            }
+          };
+
+          img.onerror = function () {
+            reject(new Error("Error loading image for hashing"));
+          };
+
+          img.src = imageSrc;
+        });
+      }
+
       // Import a single pattern
       async function importPattern(nhdFile, pngFile, metadata) {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
           try {
             console.log(
               `Importing pattern: ${nhdFile.name}, size: ${nhdFile.size} bytes`
@@ -2882,13 +2938,32 @@
               // System metadata
               dateAdded: new Date().toISOString().split("T")[0],
               lastModified: new Date().toISOString().split("T")[0],
+
+              // Hash for duplicate detection (will be added below)
+              thumbnailHash: null,
             };
+
+            // Generate hash for the thumbnail if available
+            if (pngFile) {
+              try {
+                pattern.thumbnailHash = await generateThumbnailHash(
+                  pattern.thumbnailPath
+                );
+                console.log(`Generated hash for ${pattern.patternName}`);
+              } catch (hashError) {
+                console.error("Error generating hash:", hashError);
+                // Continue even if hash generation fails
+              }
+            }
 
             console.log("Created pattern object:", {
               id: pattern.id,
               name: pattern.patternName,
               creator: pattern.creatorName,
               town: pattern.townName,
+              hash: pattern.thumbnailHash
+                ? pattern.thumbnailHash.substring(0, 20) + "..."
+                : "None",
             });
 
             // Add pattern to data store
@@ -3036,9 +3111,9 @@
           '<div class="loading"></div> Scanning for duplicates...';
 
         try {
-          // Get all patterns with thumbnails
+          // Get all patterns with thumbnails and hashes
           const patterns = Object.values(appData.patterns).filter(
-            (p) => p.thumbnailPath
+            (p) => p.thumbnailPath && p.thumbnailHash
           );
 
           if (patterns.length === 0) {
@@ -3047,98 +3122,165 @@
             return;
           }
 
-          // Compare each pattern with all others
-          const duplicates = [];
+          // Generate hashes for patterns that don't have them yet
+          const patternsWithoutHash = Object.values(appData.patterns).filter(
+            (p) => p.thumbnailPath && !p.thumbnailHash
+          );
 
-          // Create a canvas for image comparison
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
+          if (patternsWithoutHash.length > 0) {
+            duplicatesContainer.innerHTML =
+              '<div class="loading"></div> Generating hashes for patterns...';
 
-          // Set a reasonable size for comparison
-          canvas.width = 32;
-          canvas.height = 32;
-
-          // For each pattern, compare with all others
-          for (let i = 0; i < patterns.length; i++) {
-            const patternA = patterns[i];
-
-            // Skip if already part of a duplicate set
-            if (duplicates.some((set) => set.includes(patternA.id))) continue;
-
-            const duplicateSet = [patternA.id];
-
-            for (let j = i + 1; j < patterns.length; j++) {
-              const patternB = patterns[j];
-
-              // Skip if already part of a duplicate set
-              if (duplicates.some((set) => set.includes(patternB.id))) continue;
-
-              // Compare thumbnails
-              const areEqual = await compareImages(
-                patternA.thumbnailPath,
-                patternB.thumbnailPath,
-                canvas,
-                ctx
-              );
-
-              if (areEqual) {
-                duplicateSet.push(patternB.id);
+            for (const pattern of patternsWithoutHash) {
+              try {
+                pattern.thumbnailHash = await generateThumbnailHash(
+                  pattern.thumbnailPath
+                );
+              } catch (error) {
+                console.error(
+                  `Error generating hash for pattern ${pattern.id}:`,
+                  error
+                );
               }
             }
 
-            if (duplicateSet.length > 1) {
-              duplicates.push(duplicateSet);
-            }
+            // Save the newly generated hashes
+            saveDataToLocalStorage();
           }
+
+          // Group patterns by hash
+          const hashedPatterns = {};
+          Object.values(appData.patterns)
+            .filter((p) => p.thumbnailHash)
+            .forEach((pattern) => {
+              if (!hashedPatterns[pattern.thumbnailHash]) {
+                hashedPatterns[pattern.thumbnailHash] = [];
+              }
+              hashedPatterns[pattern.thumbnailHash].push(pattern.id);
+            });
+
+          // Find duplicate sets (patterns with the same hash)
+          const duplicates = Object.values(hashedPatterns).filter(
+            (patternIds) => patternIds.length > 1
+          );
 
           // Render results
           if (duplicates.length === 0) {
             duplicatesContainer.innerHTML =
               "<p>No duplicate patterns found.</p>";
           } else {
-            let html = `<div class="success-message">Found ${duplicates.length} sets of duplicate patterns.</div>`;
+            duplicatesContainer.innerHTML = `
+                <div class="success-message">Found ${duplicates.length} sets of duplicate patterns.</div>
+                <div class="duplicate-sets-container"></div>
+            `;
 
+            const container = duplicatesContainer.querySelector(
+              ".duplicate-sets-container"
+            );
+
+            // Render each duplicate set
             duplicates.forEach((set, index) => {
-              html += `
-                            <div class="set-item">
-                                <h3>Duplicate Set #${index + 1}</h3>
-                                <div class="set-patterns">
-                                    ${set
-                                      .map((id) => {
-                                        const pattern = appData.patterns[id];
-                                        return `
-                                            <div class="duplicate-pattern">
-                                                <img src="${pattern.thumbnailPath}" alt="${pattern.patternName}">
-                                                <div class="pattern-info">
-                                                    <div>${pattern.patternName}</div>
-                                                    <div>by ${pattern.creatorName}</div>
-                                                </div>
-                                            </div>
-                                        `;
-                                      })
-                                      .join("")}
+              const setDiv = document.createElement("div");
+              setDiv.className = "duplicate-set";
+
+              // Get patterns for this set
+              const setPatterns = set
+                .map((id) => appData.patterns[id])
+                .filter((p) => p);
+
+              setDiv.innerHTML = `
+                    <div class="duplicate-set-header">
+                        <h3>Duplicate Set #${index + 1}</h3>
+                        <div class="similarity-info">
+                            <span class="similarity-badge high">Exact Match</span>
+                        </div>
+                    </div>
+                    <div class="duplicate-patterns">
+                        ${setPatterns
+                          .map(
+                            (pattern) => `
+                            <div class="duplicate-pattern" data-id="${
+                              pattern.id
+                            }">
+                                <div class="pattern-preview">
+                                    <img src="${pattern.thumbnailPath}" alt="${
+                              pattern.patternName
+                            }" class="pixel-art-image">
+                                    <div class="pattern-select">
+                                        <input type="radio" name="primary-${index}" value="${
+                              pattern.id
+                            }" 
+                                            id="primary-${pattern.id}" ${
+                              set.indexOf(pattern.id) === 0 ? "checked" : ""
+                            }>
+                                        <label for="primary-${
+                                          pattern.id
+                                        }">Primary</label>
+                                    </div>
                                 </div>
-                                <div class="duplicate-actions">
-                                    <button class="btn btn-secondary" data-action="merge" data-set="${index}">Merge</button>
-                                    <button class="btn btn-secondary" data-action="keep-all" data-set="${index}">Keep All</button>
+                                <div class="pattern-details">
+                                    <div class="pattern-name">${
+                                      pattern.patternName
+                                    }</div>
+                                    <div class="pattern-creator">by ${
+                                      pattern.creatorName
+                                    }</div>
+                                    <div class="pattern-metadata">
+                                        <span>Added: ${
+                                          pattern.dateAdded || "Unknown"
+                                        }</span>
+                                        <span>${
+                                          pattern.tags.length > 0
+                                            ? `Tags: ${pattern.tags.join(", ")}`
+                                            : "No tags"
+                                        }</span>
+                                        <span>${
+                                          pattern.setName
+                                            ? `In set: ${pattern.setName}`
+                                            : "Not in a set"
+                                        }</span>
+                                    </div>
                                 </div>
                             </div>
-                        `;
+                        `
+                          )
+                          .join("")}
+                    </div>
+                    <div class="duplicate-actions">
+                        <button class="btn" data-action="merge" data-set="${index}">Merge Selected as Primary</button>
+                        <button class="btn btn-secondary" data-action="keep-all" data-set="${index}">Keep All as Related</button>
+                        <button class="btn btn-secondary" data-action="ignore" data-set="${index}">Ignore</button>
+                    </div>
+                `;
+
+              container.appendChild(setDiv);
             });
 
-            duplicatesContainer.innerHTML = html;
-
-            // Add event listeners for buttons
-            duplicatesContainer
+            // Add event listeners for action buttons
+            container
               .querySelectorAll('[data-action="merge"]')
               .forEach((button) => {
                 button.addEventListener("click", () => {
                   const setIndex = parseInt(button.getAttribute("data-set"));
-                  mergeDuplicates(duplicates[setIndex]);
+                  const radioName = `primary-${setIndex}`;
+                  const checkedRadio = container.querySelector(
+                    `input[name="${radioName}"]:checked`
+                  );
+
+                  if (checkedRadio) {
+                    const primaryId = checkedRadio.value;
+                    const setIds = duplicates[setIndex];
+                    mergeDuplicatesEnhanced(setIds, primaryId);
+                  } else {
+                    showNotification(
+                      "Please select a primary pattern",
+                      "error"
+                    );
+                  }
                 });
               });
 
-            duplicatesContainer
+            container
               .querySelectorAll('[data-action="keep-all"]')
               .forEach((button) => {
                 button.addEventListener("click", () => {
@@ -3146,6 +3288,120 @@
                   keepAllDuplicates(duplicates[setIndex]);
                 });
               });
+
+            container
+              .querySelectorAll('[data-action="ignore"]')
+              .forEach((button) => {
+                button.addEventListener("click", () => {
+                  const setIndex = parseInt(button.getAttribute("data-set"));
+                  const setDiv = button.closest(".duplicate-set");
+                  setDiv.remove();
+
+                  // Check if there are any sets left
+                  if (
+                    container.querySelectorAll(".duplicate-set").length === 0
+                  ) {
+                    duplicatesContainer.innerHTML =
+                      "<p>No duplicate patterns found.</p>";
+                  }
+                });
+              });
+
+            // Add styles for duplicates UI if not already added
+            if (!document.getElementById("duplicate-styles")) {
+              const style = document.createElement("style");
+              style.id = "duplicate-styles";
+              style.textContent = `
+                    .duplicate-sets-container {
+                        margin-top: 20px;
+                    }
+                    .duplicate-set {
+                        background: white;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                        margin-bottom: 20px;
+                        overflow: hidden;
+                    }
+                    .duplicate-set-header {
+                        padding: 15px;
+                        background: var(--secondary-color);
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+                    .duplicate-set-header h3 {
+                        margin: 0;
+                    }
+                    .similarity-badge {
+                        display: inline-block;
+                        padding: 3px 8px;
+                        border-radius: 12px;
+                        font-size: 0.8rem;
+                        color: white;
+                    }
+                    .similarity-badge.high {
+                        background-color: var(--success-color);
+                    }
+                    .duplicate-patterns {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 15px;
+                        padding: 15px;
+                    }
+                    .duplicate-pattern {
+                        flex: 1;
+                        min-width: 200px;
+                        max-width: 300px;
+                        border: 1px solid var(--border-color);
+                        border-radius: 4px;
+                        overflow: hidden;
+                    }
+                    .pattern-preview {
+                        position: relative;
+                    }
+                    .pattern-preview img {
+                        width: 100%;
+                        height: auto;
+                        display: block;
+                    }
+                    .pattern-select {
+                        position: absolute;
+                        bottom: 0;
+                        left: 0;
+                        right: 0;
+                        background: rgba(255, 255, 255, 0.8);
+                        padding: 5px;
+                        display: flex;
+                        justify-content: center;
+                    }
+                    .pattern-details {
+                        padding: 10px;
+                    }
+                    .pattern-name {
+                        font-weight: bold;
+                        margin-bottom: 2px;
+                    }
+                    .pattern-creator {
+                        color: #666;
+                        font-size: 0.9rem;
+                        margin-bottom: 5px;
+                    }
+                    .pattern-metadata {
+                        font-size: 0.8rem;
+                        color: #666;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 2px;
+                    }
+                    .duplicate-actions {
+                        padding: 15px;
+                        border-top: 1px solid var(--border-color);
+                        display: flex;
+                        gap: 10px;
+                    }
+                `;
+              document.head.appendChild(style);
+            }
           }
         } catch (error) {
           console.error("Error scanning for duplicates:", error);
