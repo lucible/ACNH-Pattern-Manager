@@ -1,0 +1,2219 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Animal Crossing Pattern Collection Manager</title>
+    <style>
+      :root {
+        --primary-color: #78c850;
+        --secondary-color: #f8f8f8;
+        --border-color: #e0e0e0;
+        --text-color: #333;
+        --accent-color: #f0c030;
+        --error-color: #e74c3c;
+        --success-color: #2ecc71;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: var(--text-color);
+        background-color: #f5f9f5;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 0;
+        border-bottom: 2px solid var(--primary-color);
+        margin-bottom: 20px;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .logo img {
+        height: 40px;
+      }
+
+      .logo h1 {
+        font-size: 1.8rem;
+        color: var(--primary-color);
+      }
+
+      nav {
+        background-color: var(--secondary-color);
+        padding: 10px 0;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+
+      .nav-tabs {
+        display: flex;
+        list-style: none;
+      }
+
+      .nav-tabs li {
+        padding: 10px 20px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+      }
+
+      .nav-tabs li:hover {
+        background-color: rgba(120, 200, 80, 0.1);
+      }
+
+      .nav-tabs li.active {
+        border-bottom: 2px solid var(--primary-color);
+        font-weight: bold;
+      }
+
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      .action-bar {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+
+      .search-bar {
+        display: flex;
+        gap: 10px;
+        flex: 1;
+        max-width: 500px;
+      }
+
+      .search-bar input {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+      }
+
+      .btn {
+        padding: 8px 16px;
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      .btn:hover {
+        background-color: #6ab043;
+      }
+
+      .btn-secondary {
+        background-color: var(--secondary-color);
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+      }
+
+      .btn-secondary:hover {
+        background-color: #e8e8e8;
+      }
+
+      .pattern-gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 20px;
+      }
+
+      .pattern-card {
+        background-color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .pattern-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      .pattern-thumbnail {
+        width: 100%;
+        height: 200px;
+        object-fit: contain;
+        background-color: #f8f8f8;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .pattern-info {
+        padding: 12px;
+      }
+
+      .pattern-name {
+        font-weight: bold;
+        margin-bottom: 5px;
+        font-size: 1.1rem;
+      }
+
+      .pattern-creator {
+        color: #666;
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+      }
+
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 8px;
+      }
+
+      .tag {
+        background-color: var(--secondary-color);
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+
+      .modal {
+        background-color: white;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 20px;
+        position: relative;
+      }
+
+      .modal-close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #999;
+      }
+
+      .modal-title {
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .sidebar {
+        width: 250px;
+        background-color: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-right: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .sidebar-section {
+        margin-bottom: 20px;
+      }
+
+      .sidebar-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .sidebar-list {
+        list-style: none;
+      }
+
+      .sidebar-list li {
+        padding: 5px 0;
+        cursor: pointer;
+      }
+
+      .sidebar-list li:hover {
+        color: var(--primary-color);
+      }
+
+      .filter-count {
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: 10px;
+        padding: 2px 6px;
+        font-size: 0.7rem;
+        margin-left: 5px;
+      }
+
+      .main-content {
+        display: flex;
+      }
+
+      .content-area {
+        flex: 1;
+      }
+
+      .error-message {
+        color: var(--error-color);
+        background-color: rgba(231, 76, 60, 0.1);
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+
+      .success-message {
+        color: var(--success-color);
+        background-color: rgba(46, 204, 113, 0.1);
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+
+      .form-group {
+        margin-bottom: 15px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      .form-group input,
+      .form-group textarea,
+      .form-group select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+      }
+
+      .tag-input {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        padding: 5px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        min-height: 40px;
+      }
+
+      .tag-input input {
+        flex: 1;
+        min-width: 60px;
+        border: none;
+        outline: none;
+        padding: 5px;
+      }
+
+      .tag-item {
+        display: flex;
+        align-items: center;
+        background-color: var(--primary-color);
+        color: white;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+      }
+
+      .tag-remove {
+        margin-left: 5px;
+        cursor: pointer;
+      }
+
+      .pattern-detail {
+        display: flex;
+        gap: 20px;
+      }
+
+      .pattern-image {
+        flex: 0 0 250px;
+      }
+
+      .pattern-image img {
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+      }
+
+      .pattern-details {
+        flex: 1;
+      }
+
+      .set-manager {
+        margin-top: 20px;
+      }
+
+      .set-item {
+        background-color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .set-patterns {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        overflow-x: auto;
+        padding-bottom: 10px;
+      }
+
+      .set-pattern {
+        width: 80px;
+        height: 80px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        cursor: move;
+      }
+
+      .creator-item {
+        background-color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .creator-info {
+        flex: 1;
+      }
+
+      .creator-stats {
+        display: flex;
+        gap: 15px;
+        color: #666;
+      }
+
+      .notification {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: white;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        transform: translateY(100px);
+        opacity: 0;
+        transition: transform 0.3s, opacity 0.3s;
+        z-index: 1001;
+      }
+
+      .notification.show {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(120, 200, 80, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--primary-color);
+        animation: spin 1s linear infinite;
+        margin-right: 10px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (max-width: 768px) {
+        .main-content {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          width: 100%;
+          margin-right: 0;
+          margin-bottom: 20px;
+        }
+
+        .pattern-detail {
+          flex-direction: column;
+        }
+
+        .pattern-image {
+          flex: none;
+          max-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="logo">
+          <img
+            src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjNzhjODUwIiBkPSJNNDQ4LjUgMjI1LjZjMC0xNy42LTEwLjYtNDIuOS0zMS42LTYzLjlzLTQ2LjMtMzEuNi02My45LTMxLjZjLTE3LjYgMC00Mi45IDEwLjYtNjMuOSAzMS42cy0zMS42IDQ2LjMtMzEuNiA2My45YzAgMTcuNiAxMC42IDQyLjkgMzEuNiA2My45czQ2LjMgMzEuNiA2My45IDMxLjZjMTcuNiAwIDQyLjktMTAuNiA2My45LTMxLjZzMzEuNi00Ni4zIDMxLjYtNjMuOXpNMjI0LjUgNDE4LjFjMC0xNy42LTEwLjYtNDIuOS0zMS42LTYzLjlzLTQ2LjMtMzEuNi02My45LTMxLjZjLTE3LjYgMC00Mi45IDEwLjYtNjMuOSAzMS42cy0zMS42IDQ2LjMtMzEuNiA2My45YzAgMTcuNiAxMC42IDQyLjkgMzEuNiA2My45czQ2LjMgMzEuNiA2My45IDMxLjZjMTcuNiAwIDQyLjktMTAuNiA2My45LTMxLjZzMzEuNi00Ni4zIDMxLjYtNjMuOXpNNDI0LjkgMzA2LjRjMC0xMi44LTcuNy0zMS4zLTIzLTQ2LjdzLTMzLjktMjMtNDYuNy0yM2MtMTIuOCAwLTMxLjMgNy43LTQ2LjcgMjNzLTIzIDMzLjktMjMgNDYuN2MwIDEyLjggNy43IDMxLjMgMjMgNDYuN3MzMy45IDIzIDQ2LjcgMjNjMTIuOCAwIDMxLjMtNy43IDQ2LjctMjNzMjMtMzMuOSAyMy00Ni43ek0xMjggMTAyLjRjMC0xNy43LTcuMS00Mi45LTIxLjMtNjMuOVMxNy43IDAgMCAwdjUxMmMxNy43IDAgOTIuNS0zMS42IDEwNi43LTUyLjdzMjEuMy00Ni4zIDIxLjMtNjMuOWMwLTE3LjYtMTcuOC0xMDIuNC0xNy44LTEwMi40UzEyOCAxMjAgMTI4IDEwMi40eiIvPjwvc3ZnPg=="
+            alt="Leaf Logo"
+          />
+          <h1>Animal Crossing Pattern Manager</h1>
+        </div>
+        <div>
+          <button id="import-btn" class="btn">Import Patterns</button>
+          <button id="export-btn" class="btn btn-secondary">
+            Export Metadata
+          </button>
+        </div>
+      </header>
+
+      <nav>
+        <ul class="nav-tabs">
+          <li class="active" data-tab="patterns">Patterns</li>
+          <li data-tab="sets">Sets</li>
+          <li data-tab="creators">Creators</li>
+          <li data-tab="duplicates">Duplicates</li>
+        </ul>
+      </nav>
+
+      <div id="patterns" class="tab-content active">
+        <div class="action-bar">
+          <div class="search-bar">
+            <input
+              type="text"
+              id="pattern-search"
+              placeholder="Search patterns..."
+            />
+            <button class="btn">Search</button>
+          </div>
+          <div>
+            <button class="btn btn-secondary">Sort By</button>
+          </div>
+        </div>
+
+        <div class="main-content">
+          <div class="sidebar">
+            <div class="sidebar-section">
+              <h3 class="sidebar-title">Tags</h3>
+              <ul class="sidebar-list" id="tag-filters">
+                <li>Clothing <span class="filter-count">24</span></li>
+                <li>Designs <span class="filter-count">16</span></li>
+                <li>Blue <span class="filter-count">8</span></li>
+                <li>Path <span class="filter-count">12</span></li>
+              </ul>
+            </div>
+            <div class="sidebar-section">
+              <h3 class="sidebar-title">Creators</h3>
+              <ul class="sidebar-list" id="creator-filters">
+                <li>Creator1 <span class="filter-count">10</span></li>
+                <li>Creator2 <span class="filter-count">5</span></li>
+              </ul>
+            </div>
+            <div class="sidebar-section">
+              <h3 class="sidebar-title">Sets</h3>
+              <ul class="sidebar-list" id="set-filters">
+                <li>Star Collection <span class="filter-count">3</span></li>
+                <li>Path Set <span class="filter-count">6</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="content-area">
+            <div class="pattern-gallery" id="pattern-gallery">
+              <!-- Pattern cards will be inserted here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="sets" class="tab-content">
+        <div class="action-bar">
+          <div class="search-bar">
+            <input type="text" id="set-search" placeholder="Search sets..." />
+            <button class="btn">Search</button>
+          </div>
+          <div>
+            <button id="create-set-btn" class="btn">Create New Set</button>
+          </div>
+        </div>
+
+        <div class="set-manager" id="set-manager">
+          <!-- Set items will be inserted here -->
+        </div>
+      </div>
+
+      <div id="creators" class="tab-content">
+        <div class="action-bar">
+          <div class="search-bar">
+            <input
+              type="text"
+              id="creator-search"
+              placeholder="Search creators..."
+            />
+            <button class="btn">Search</button>
+          </div>
+        </div>
+
+        <div id="creator-list">
+          <!-- Creator items will be inserted here -->
+        </div>
+      </div>
+
+      <div id="duplicates" class="tab-content">
+        <div class="action-bar">
+          <button id="scan-duplicates-btn" class="btn">
+            Scan for Duplicates
+          </button>
+        </div>
+
+        <div id="duplicates-container">
+          <p>No duplicate patterns detected.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pattern Details Modal -->
+    <div class="modal-backdrop" id="pattern-modal">
+      <div class="modal">
+        <button class="modal-close">&times;</button>
+        <h2 class="modal-title">Pattern Details</h2>
+        <div class="pattern-detail">
+          <div class="pattern-image">
+            <img id="modal-pattern-img" src="" alt="Pattern" />
+          </div>
+          <div class="pattern-details">
+            <div class="form-group">
+              <label for="pattern-name">Pattern Name</label>
+              <input type="text" id="pattern-name" readonly />
+            </div>
+            <div class="form-group">
+              <label for="creator-name">Creator</label>
+              <input type="text" id="creator-name" readonly />
+            </div>
+            <div class="form-group">
+              <label for="town-name">Town</label>
+              <input type="text" id="town-name" readonly />
+            </div>
+            <div class="form-group">
+              <label for="pattern-tags">Tags</label>
+              <div class="tag-input" id="tag-input">
+                <!-- Tags will be inserted here -->
+                <input type="text" placeholder="Add a tag..." />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="pattern-set">Set</label>
+              <select id="pattern-set">
+                <option value="">None</option>
+                <!-- Set options will be inserted here -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="set-order">Set Order</label>
+              <input type="number" id="set-order" min="1" />
+            </div>
+            <div class="form-group">
+              <label for="pattern-notes">Notes</label>
+              <textarea id="pattern-notes" rows="3"></textarea>
+            </div>
+            <button class="btn" id="save-pattern-btn">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Set Modal -->
+    <div class="modal-backdrop" id="set-modal">
+      <div class="modal">
+        <button class="modal-close">&times;</button>
+        <h2 class="modal-title">Create New Set</h2>
+        <div class="form-group">
+          <label for="set-name">Set Name</label>
+          <input type="text" id="set-name" />
+        </div>
+        <div class="form-group">
+          <label for="set-notes">Notes</label>
+          <textarea id="set-notes" rows="3"></textarea>
+        </div>
+        <button class="btn" id="save-set-btn">Create Set</button>
+      </div>
+    </div>
+
+    <!-- Import Patterns Modal -->
+    <div class="modal-backdrop" id="import-modal">
+      <div class="modal">
+        <button class="modal-close">&times;</button>
+        <h2 class="modal-title">Import Patterns</h2>
+        <div class="form-group">
+          <label for="pattern-folder">Select Pattern Folder</label>
+          <input
+            type="file"
+            id="pattern-folder"
+            webkitdirectory
+            directory
+            multiple
+          />
+        </div>
+        <div id="import-status"></div>
+        <button class="btn" id="start-import-btn">Import Patterns</button>
+      </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+      Operation completed successfully.
+    </div>
+
+    <script>
+      // Main app data store
+      const appData = {
+        patterns: {},
+        creators: {},
+        sets: {},
+        processedFiles: new Set(),
+        activeFilters: {
+          tags: new Set(),
+          creators: new Set(),
+          sets: new Set(),
+          search: "",
+        },
+      };
+
+      // DOM Elements
+      const elements = {
+        tabs: document.querySelectorAll(".nav-tabs li"),
+        tabContents: document.querySelectorAll(".tab-content"),
+        patternGallery: document.getElementById("pattern-gallery"),
+        patternModal: document.getElementById("pattern-modal"),
+        setModal: document.getElementById("set-modal"),
+        importModal: document.getElementById("import-modal"),
+        notification: document.getElementById("notification"),
+        modalCloseButtons: document.querySelectorAll(".modal-close"),
+        importBtn: document.getElementById("import-btn"),
+        exportBtn: document.getElementById("export-btn"),
+        createSetBtn: document.getElementById("create-set-btn"),
+        savePatternBtn: document.getElementById("save-pattern-btn"),
+        saveSetBtn: document.getElementById("save-set-btn"),
+        startImportBtn: document.getElementById("start-import-btn"),
+        scanDuplicatesBtn: document.getElementById("scan-duplicates-btn"),
+        patternSearch: document.getElementById("pattern-search"),
+        setManager: document.getElementById("set-manager"),
+        creatorList: document.getElementById("creator-list"),
+        duplicatesContainer: document.getElementById("duplicates-container"),
+        tagFilters: document.getElementById("tag-filters"),
+        creatorFilters: document.getElementById("creator-filters"),
+        setFilters: document.getElementById("set-filters"),
+      };
+
+      // Initialize the application
+      function initApp() {
+        loadDataFromLocalStorage();
+        setupEventListeners();
+        renderPatternGallery();
+        renderSidebarFilters();
+      }
+
+      // Load data from localStorage
+      function loadDataFromLocalStorage() {
+        try {
+          const storedPatterns = localStorage.getItem("acPatterns");
+          const storedCreators = localStorage.getItem("acCreators");
+          const storedSets = localStorage.getItem("acSets");
+          const storedProcessedFiles = localStorage.getItem("acProcessedFiles");
+
+          if (storedPatterns) appData.patterns = JSON.parse(storedPatterns);
+          if (storedCreators) appData.creators = JSON.parse(storedCreators);
+          if (storedSets) appData.sets = JSON.parse(storedSets);
+          if (storedProcessedFiles) {
+            appData.processedFiles = new Set(JSON.parse(storedProcessedFiles));
+          }
+        } catch (error) {
+          console.error("Error loading data from localStorage:", error);
+          showNotification(
+            "Error loading saved data. Starting fresh.",
+            "error"
+          );
+        }
+      }
+
+      // Save data to localStorage
+      function saveDataToLocalStorage() {
+        try {
+          localStorage.setItem("acPatterns", JSON.stringify(appData.patterns));
+          localStorage.setItem("acCreators", JSON.stringify(appData.creators));
+          localStorage.setItem("acSets", JSON.stringify(appData.sets));
+          localStorage.setItem(
+            "acProcessedFiles",
+            JSON.stringify([...appData.processedFiles])
+          );
+        } catch (error) {
+          console.error("Error saving data to localStorage:", error);
+          showNotification(
+            "Error saving data. Please export your metadata as backup.",
+            "error"
+          );
+        }
+      }
+
+      // Setup event listeners
+      function setupEventListeners() {
+        // Tab navigation
+        elements.tabs.forEach((tab) => {
+          tab.addEventListener("click", () => {
+            const tabId = tab.getAttribute("data-tab");
+            elements.tabs.forEach((t) => t.classList.remove("active"));
+            elements.tabContents.forEach((tc) => tc.classList.remove("active"));
+            tab.classList.add("active");
+            document.getElementById(tabId).classList.add("active");
+
+            // Render tab-specific content
+            if (tabId === "sets") {
+              renderSets();
+            } else if (tabId === "creators") {
+              renderCreators();
+            }
+          });
+        });
+
+        // Modal close buttons
+        elements.modalCloseButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            elements.patternModal.style.display = "none";
+            elements.setModal.style.display = "none";
+            elements.importModal.style.display = "none";
+          });
+        });
+
+        // Button event listeners
+        elements.importBtn.addEventListener("click", () => {
+          elements.importModal.style.display = "flex";
+        });
+
+        elements.exportBtn.addEventListener("click", exportMetadata);
+        elements.createSetBtn.addEventListener("click", () => {
+          elements.setModal.style.display = "flex";
+        });
+
+        elements.savePatternBtn.addEventListener("click", savePatternChanges);
+        elements.saveSetBtn.addEventListener("click", createNewSet);
+        elements.startImportBtn.addEventListener("click", importPatterns);
+        elements.scanDuplicatesBtn.addEventListener("click", scanForDuplicates);
+
+        // Search input
+        elements.patternSearch.addEventListener(
+          "input",
+          debounce(function () {
+            appData.activeFilters.search = this.value.trim().toLowerCase();
+            renderPatternGallery();
+          }, 300)
+        );
+      }
+
+      // Render pattern gallery
+      function renderPatternGallery() {
+        const gallery = elements.patternGallery;
+        gallery.innerHTML = "";
+
+        const filteredPatterns = filterPatterns(
+          Object.values(appData.patterns)
+        );
+
+        if (filteredPatterns.length === 0) {
+          gallery.innerHTML =
+            "<p>No patterns found. Import patterns to get started.</p>";
+          return;
+        }
+
+        filteredPatterns.forEach((pattern) => {
+          const card = createPatternCard(pattern);
+          gallery.appendChild(card);
+        });
+      }
+
+      // Filter patterns based on active filters
+      function filterPatterns(patterns) {
+        return patterns.filter((pattern) => {
+          // Search filter
+          if (
+            appData.activeFilters.search &&
+            !pattern.patternName
+              .toLowerCase()
+              .includes(appData.activeFilters.search) &&
+            !pattern.creatorName
+              .toLowerCase()
+              .includes(appData.activeFilters.search)
+          ) {
+            return false;
+          }
+
+          // Tag filters
+          if (appData.activeFilters.tags.size > 0) {
+            const hasMatchingTag = pattern.tags.some((tag) =>
+              appData.activeFilters.tags.has(tag.toLowerCase())
+            );
+            if (!hasMatchingTag) return false;
+          }
+
+          // Creator filters
+          if (appData.activeFilters.creators.size > 0) {
+            if (
+              !appData.activeFilters.creators.has(
+                pattern.creatorName.toLowerCase()
+              )
+            ) {
+              return false;
+            }
+          }
+
+          // Set filters
+          if (appData.activeFilters.sets.size > 0) {
+            if (
+              !pattern.setName ||
+              !appData.activeFilters.sets.has(pattern.setName.toLowerCase())
+            ) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+      }
+
+      // Create a pattern card element
+      function createPatternCard(pattern) {
+        const card = document.createElement("div");
+        card.className = "pattern-card";
+        card.setAttribute("data-id", pattern.id);
+
+        // Default thumbnail if none exists
+        const thumbnailPath =
+          pattern.thumbnailPath ||
+          "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
+
+        const html = `
+                <img class="pattern-thumbnail" src="${thumbnailPath}" alt="${
+          pattern.patternName
+        }">
+                <div class="pattern-info">
+                    <div class="pattern-name">${pattern.patternName}</div>
+                    <div class="pattern-creator">by ${pattern.creatorName} of ${
+          pattern.townName
+        }</div>
+                    <div class="tag-list">
+                        ${pattern.tags
+                          .map((tag) => `<span class="tag">${tag}</span>`)
+                          .join("")}
+                    </div>
+                </div>
+            `;
+
+        card.innerHTML = html;
+
+        // Add click event to open pattern detail modal
+        card.addEventListener("click", () => {
+          openPatternDetail(pattern.id);
+        });
+
+        return card;
+      }
+
+      // Render sidebar filters
+      function renderSidebarFilters() {
+        // Render tag filters
+        const allTags = new Map();
+        Object.values(appData.patterns).forEach((pattern) => {
+          pattern.tags.forEach((tag) => {
+            const tagLower = tag.toLowerCase();
+            allTags.set(tagLower, (allTags.get(tagLower) || 0) + 1);
+          });
+        });
+
+        const tagFiltersHTML = Array.from(allTags.entries())
+          .sort((a, b) => b[1] - a[1])
+          .map(([tag, count]) => {
+            const isActive = appData.activeFilters.tags.has(tag);
+            return `<li class="${
+              isActive ? "active" : ""
+            }" data-tag="${tag}">${tag} <span class="filter-count">${count}</span></li>`;
+          })
+          .join("");
+
+        elements.tagFilters.innerHTML =
+          tagFiltersHTML || "<li>No tags available</li>";
+
+        // Setup tag filter click events
+        elements.tagFilters.querySelectorAll("li").forEach((li) => {
+          li.addEventListener("click", () => {
+            const tag = li.getAttribute("data-tag");
+            if (!tag) return;
+
+            if (appData.activeFilters.tags.has(tag)) {
+              appData.activeFilters.tags.delete(tag);
+              li.classList.remove("active");
+            } else {
+              appData.activeFilters.tags.add(tag);
+              li.classList.add("active");
+            }
+
+            renderPatternGallery();
+          });
+        });
+
+        // Similar implementation for creators and sets filters
+        renderCreatorFilters();
+        renderSetFilters();
+      }
+
+      // Render creator filters
+      function renderCreatorFilters() {
+        const creatorCounts = new Map();
+        Object.values(appData.patterns).forEach((pattern) => {
+          const creatorName = pattern.creatorName.toLowerCase();
+          creatorCounts.set(
+            creatorName,
+            (creatorCounts.get(creatorName) || 0) + 1
+          );
+        });
+
+        const creatorFiltersHTML = Array.from(creatorCounts.entries())
+          .sort((a, b) => b[1] - a[1])
+          .map(([creator, count]) => {
+            const isActive = appData.activeFilters.creators.has(creator);
+            return `<li class="${
+              isActive ? "active" : ""
+            }" data-creator="${creator}">${creator} <span class="filter-count">${count}</span></li>`;
+          })
+          .join("");
+
+        elements.creatorFilters.innerHTML =
+          creatorFiltersHTML || "<li>No creators available</li>";
+
+        // Setup creator filter click events
+        elements.creatorFilters.querySelectorAll("li").forEach((li) => {
+          li.addEventListener("click", () => {
+            const creator = li.getAttribute("data-creator");
+            if (!creator) return;
+
+            if (appData.activeFilters.creators.has(creator)) {
+              appData.activeFilters.creators.delete(creator);
+              li.classList.remove("active");
+            } else {
+              appData.activeFilters.creators.add(creator);
+              li.classList.add("active");
+            }
+
+            renderPatternGallery();
+          });
+        });
+      }
+
+      // Render set filters
+      function renderSetFilters() {
+        const setCounts = new Map();
+        Object.values(appData.patterns).forEach((pattern) => {
+          if (!pattern.setName) return;
+
+          const setNameLower = pattern.setName.toLowerCase();
+          setCounts.set(setNameLower, (setCounts.get(setNameLower) || 0) + 1);
+        });
+
+        const setFiltersHTML = Array.from(setCounts.entries())
+          .sort((a, b) => b[1] - a[1])
+          .map(([setName, count]) => {
+            const isActive = appData.activeFilters.sets.has(setName);
+            return `<li class="${
+              isActive ? "active" : ""
+            }" data-set="${setName}">${setName} <span class="filter-count">${count}</span></li>`;
+          })
+          .join("");
+
+        elements.setFilters.innerHTML =
+          setFiltersHTML || "<li>No sets available</li>";
+
+        // Setup set filter click events
+        elements.setFilters.querySelectorAll("li").forEach((li) => {
+          li.addEventListener("click", () => {
+            const setName = li.getAttribute("data-set");
+            if (!setName) return;
+
+            if (appData.activeFilters.sets.has(setName)) {
+              appData.activeFilters.sets.delete(setName);
+              li.classList.remove("active");
+            } else {
+              appData.activeFilters.sets.add(setName);
+              li.classList.add("active");
+            }
+
+            renderPatternGallery();
+          });
+        });
+      }
+
+      // Open pattern detail modal
+      function openPatternDetail(patternId) {
+        const pattern = appData.patterns[patternId];
+        if (!pattern) return;
+
+        // Set pattern details in modal
+        document.getElementById("modal-pattern-img").src =
+          pattern.thumbnailPath ||
+          "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
+        document.getElementById("pattern-name").value = pattern.patternName;
+        document.getElementById("creator-name").value = pattern.creatorName;
+        document.getElementById("town-name").value = pattern.townName;
+        document.getElementById("pattern-notes").value = pattern.notes || "";
+
+        // Set up tag input
+        const tagInput = document.getElementById("tag-input");
+        // Clear existing tags except the input
+        Array.from(tagInput.children).forEach((child) => {
+          if (child.tagName !== "INPUT") {
+            tagInput.removeChild(child);
+          }
+        });
+
+        // Add current tags
+        pattern.tags.forEach((tag) => {
+          const tagElement = document.createElement("div");
+          tagElement.className = "tag-item";
+          tagElement.innerHTML = `${tag} <span class="tag-remove">&times;</span>`;
+
+          // Add click event to remove tag
+          tagElement
+            .querySelector(".tag-remove")
+            .addEventListener("click", (e) => {
+              e.stopPropagation();
+              tagInput.removeChild(tagElement);
+            });
+
+          tagInput.insertBefore(tagElement, tagInput.querySelector("input"));
+        });
+
+        // Set up tag input event
+        const input = tagInput.querySelector("input");
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            const tag = input.value.trim();
+            if (tag) {
+              const tagElement = document.createElement("div");
+              tagElement.className = "tag-item";
+              tagElement.innerHTML = `${tag} <span class="tag-remove">&times;</span>`;
+
+              tagElement
+                .querySelector(".tag-remove")
+                .addEventListener("click", (e) => {
+                  e.stopPropagation();
+                  tagInput.removeChild(tagElement);
+                });
+
+              tagInput.insertBefore(tagElement, input);
+              input.value = "";
+            }
+          }
+        });
+
+        // Set up set selection
+        const setSelect = document.getElementById("pattern-set");
+
+        // Clear options except the "None" option
+        while (setSelect.options.length > 1) {
+          setSelect.remove(1);
+        }
+
+        // Add set options
+        Object.values(appData.sets).forEach((set) => {
+          const option = document.createElement("option");
+          option.value = set.id;
+          option.textContent = set.name;
+          option.selected = pattern.setName === set.name;
+          setSelect.appendChild(option);
+        });
+
+        // Set order
+        document.getElementById("set-order").value = pattern.setOrder || 1;
+
+        // Set data-id attribute for saving
+        elements.savePatternBtn.setAttribute("data-id", patternId);
+
+        // Show modal
+        elements.patternModal.style.display = "flex";
+      }
+
+      // Save pattern changes
+      function savePatternChanges() {
+        const patternId = elements.savePatternBtn.getAttribute("data-id");
+        if (!patternId || !appData.patterns[patternId]) return;
+
+        const pattern = appData.patterns[patternId];
+
+        // Get current tags
+        const tagElements = document.querySelectorAll("#tag-input .tag-item");
+        const tags = Array.from(tagElements).map((el) =>
+          el.textContent.trim().replace("×", "")
+        );
+
+        // Get set selection
+        const setSelect = document.getElementById("pattern-set");
+        const setId = setSelect.value;
+        const setName = setId ? appData.sets[setId].name : "";
+
+        // Get set order
+        const setOrder =
+          parseInt(document.getElementById("set-order").value) || 1;
+
+        // Get notes
+        const notes = document.getElementById("pattern-notes").value.trim();
+
+        // Update pattern
+        pattern.tags = tags;
+        pattern.setName = setName;
+        pattern.setId = setId;
+        pattern.setOrder = setOrder;
+        pattern.notes = notes;
+        pattern.lastModified = new Date().toISOString().split("T")[0];
+
+        // Update set data if needed
+        if (setId) {
+          const set = appData.sets[setId];
+          if (!set.patterns.includes(patternId)) {
+            set.patterns.push(patternId);
+          }
+        }
+
+        // Save data
+        saveDataToLocalStorage();
+
+        // Close modal
+        elements.patternModal.style.display = "none";
+
+        // Refresh views
+        renderPatternGallery();
+        renderSidebarFilters();
+
+        showNotification("Pattern updated successfully");
+      }
+
+      // Create new set
+      function createNewSet() {
+        const setName = document.getElementById("set-name").value.trim();
+        if (!setName) {
+          showNotification("Please enter a set name", "error");
+          return;
+        }
+
+        const setNotes = document.getElementById("set-notes").value.trim();
+
+        // Generate ID
+        const setId = "set-" + Date.now();
+
+        // Create set
+        appData.sets[setId] = {
+          id: setId,
+          name: setName,
+          patterns: [],
+          notes: setNotes,
+        };
+
+        // Save data
+        saveDataToLocalStorage();
+
+        // Close modal and clear inputs
+        document.getElementById("set-name").value = "";
+        document.getElementById("set-notes").value = "";
+        elements.setModal.style.display = "none";
+
+        // Refresh views
+        renderSets();
+        renderSidebarFilters();
+
+        showNotification("Set created successfully");
+      }
+
+      // Render sets view
+      function renderSets() {
+        const setManager = elements.setManager;
+        setManager.innerHTML = "";
+
+        const sets = Object.values(appData.sets);
+
+        if (sets.length === 0) {
+          setManager.innerHTML =
+            "<p>No sets available. Create a new set to get started.</p>";
+          return;
+        }
+
+        sets.forEach((set) => {
+          const setItem = document.createElement("div");
+          setItem.className = "set-item";
+
+          // Get patterns in this set
+          const setPatterns = set.patterns
+            .map((id) => appData.patterns[id])
+            .filter((pattern) => pattern) // Filter out any null/undefined patterns
+            .sort((a, b) => (a.setOrder || 0) - (b.setOrder || 0));
+
+          const html = `
+                    <div class="set-header">
+                        <h3>${set.name}</h3>
+                        <p>${set.notes || ""}</p>
+                    </div>
+                    <div class="set-patterns">
+                        ${setPatterns
+                          .map(
+                            (pattern, index) => `
+                            <img class="set-pattern" src="${
+                              pattern.thumbnailPath ||
+                              "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
+                            }" 
+                                alt="${pattern.patternName}" 
+                                title="${pattern.patternName}" 
+                                data-id="${pattern.id}" 
+                                data-order="${index + 1}">
+                        `
+                          )
+                          .join("")}
+                    </div>
+                    <div class="set-actions">
+                        <button class="btn btn-secondary" data-action="edit" data-id="${
+                          set.id
+                        }">Edit</button>
+                        <button class="btn btn-secondary" data-action="delete" data-id="${
+                          set.id
+                        }">Delete</button>
+                    </div>
+                `;
+
+          setItem.innerHTML = html;
+
+          // Add drag and drop for ordering
+          setupDragAndDrop(setItem.querySelector(".set-patterns"));
+
+          // Add event listeners for buttons
+          setItem
+            .querySelector('[data-action="edit"]')
+            .addEventListener("click", () => {
+              editSet(set.id);
+            });
+
+          setItem
+            .querySelector('[data-action="delete"]')
+            .addEventListener("click", () => {
+              deleteSet(set.id);
+            });
+
+          setManager.appendChild(setItem);
+        });
+      }
+
+      // Setup drag and drop for pattern ordering
+      function setupDragAndDrop(container) {
+        if (!container) return;
+
+        const patterns = container.querySelectorAll(".set-pattern");
+        patterns.forEach((pattern) => {
+          pattern.setAttribute("draggable", "true");
+
+          pattern.addEventListener("dragstart", (e) => {
+            e.dataTransfer.setData(
+              "text/plain",
+              pattern.getAttribute("data-id")
+            );
+            e.dataTransfer.effectAllowed = "move";
+            pattern.classList.add("dragging");
+          });
+
+          pattern.addEventListener("dragend", () => {
+            pattern.classList.remove("dragging");
+          });
+
+          pattern.addEventListener("click", () => {
+            const patternId = pattern.getAttribute("data-id");
+            openPatternDetail(patternId);
+          });
+        });
+
+        container.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+
+          const dragging = container.querySelector(".dragging");
+          if (!dragging) return;
+
+          const afterElement = getDragAfterElement(container, e.clientX);
+          if (afterElement) {
+            container.insertBefore(dragging, afterElement);
+          } else {
+            container.appendChild(dragging);
+          }
+        });
+
+        container.addEventListener("drop", (e) => {
+          e.preventDefault();
+          const patternId = e.dataTransfer.getData("text/plain");
+          const setId = container
+            .closest(".set-item")
+            .querySelector('[data-action="edit"]')
+            .getAttribute("data-id");
+
+          // Update pattern orders
+          const patterns = container.querySelectorAll(".set-pattern");
+          patterns.forEach((pattern, index) => {
+            const id = pattern.getAttribute("data-id");
+            if (appData.patterns[id]) {
+              appData.patterns[id].setOrder = index + 1;
+            }
+          });
+
+          saveDataToLocalStorage();
+        });
+      }
+
+      // Helper function for drag and drop
+      function getDragAfterElement(container, x) {
+        const draggableElements = [
+          ...container.querySelectorAll(".set-pattern:not(.dragging)"),
+        ];
+
+        return draggableElements.reduce(
+          (closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = x - box.left - box.width / 2;
+
+            if (offset < 0 && offset > closest.offset) {
+              return { offset, element: child };
+            } else {
+              return closest;
+            }
+          },
+          { offset: Number.NEGATIVE_INFINITY }
+        ).element;
+      }
+
+      // Edit set
+      function editSet(setId) {
+        // Implementation for editing a set
+        console.log("Edit set:", setId);
+
+        // For now, just show a notification
+        showNotification("Set editing not implemented yet");
+      }
+
+      // Delete set
+      function deleteSet(setId) {
+        if (
+          !confirm(
+            `Are you sure you want to delete this set? This will not delete the patterns in the set.`
+          )
+        ) {
+          return;
+        }
+
+        // Remove set from patterns
+        const set = appData.sets[setId];
+        if (set) {
+          set.patterns.forEach((patternId) => {
+            if (appData.patterns[patternId]) {
+              appData.patterns[patternId].setName = "";
+              appData.patterns[patternId].setId = "";
+            }
+          });
+
+          // Delete set
+          delete appData.sets[setId];
+
+          // Save data
+          saveDataToLocalStorage();
+
+          // Refresh views
+          renderSets();
+          renderSidebarFilters();
+
+          showNotification("Set deleted successfully");
+        }
+      }
+
+      // Render creators view
+      function renderCreators() {
+        const creatorList = elements.creatorList;
+        creatorList.innerHTML = "";
+
+        const creators = Object.values(appData.creators);
+
+        if (creators.length === 0) {
+          creatorList.innerHTML =
+            "<p>No creators available. Import patterns to see creators.</p>";
+          return;
+        }
+
+        creators.forEach((creator) => {
+          const creatorItem = document.createElement("div");
+          creatorItem.className = "creator-item";
+
+          // Count patterns by this creator
+          const patternCount = creator.patterns.length;
+
+          const html = `
+                    <div class="creator-info">
+                        <h3>${creator.name}</h3>
+                        <p>Town: ${creator.townName}</p>
+                        <p>${creator.notes || ""}</p>
+                    </div>
+                    <div class="creator-stats">
+                        <div>
+                            <div>Patterns</div>
+                            <div>${patternCount}</div>
+                        </div>
+                        <div>
+                            <div>Total</div>
+                            <div>${creator.totalPatterns || "Unknown"}</div>
+                        </div>
+                        <div>
+                            <div>Status</div>
+                            <div>${
+                              creator.isComplete ? "Complete" : "Incomplete"
+                            }</div>
+                        </div>
+                    </div>
+                    <div class="creator-actions">
+                        <button class="btn btn-secondary" data-action="view" data-id="${
+                          creator.id
+                        }">View Patterns</button>
+                        <button class="btn btn-secondary" data-action="edit" data-id="${
+                          creator.id
+                        }">Edit Info</button>
+                    </div>
+                `;
+
+          creatorItem.innerHTML = html;
+
+          // Add event listeners for buttons
+          creatorItem
+            .querySelector('[data-action="view"]')
+            .addEventListener("click", () => {
+              viewCreatorPatterns(creator.id);
+            });
+
+          creatorItem
+            .querySelector('[data-action="edit"]')
+            .addEventListener("click", () => {
+              editCreator(creator.id);
+            });
+
+          creatorList.appendChild(creatorItem);
+        });
+      }
+
+      // View creator patterns
+      function viewCreatorPatterns(creatorId) {
+        const creator = appData.creators[creatorId];
+        if (!creator) return;
+
+        // Clear all filters
+        appData.activeFilters.tags.clear();
+        appData.activeFilters.sets.clear();
+        appData.activeFilters.search = "";
+
+        // Add creator filter
+        appData.activeFilters.creators.clear();
+        appData.activeFilters.creators.add(creator.name.toLowerCase());
+
+        // Switch to patterns tab
+        elements.tabs.forEach((tab) => {
+          const tabId = tab.getAttribute("data-tab");
+          if (tabId === "patterns") {
+            tab.click();
+          }
+        });
+
+        // Update sidebar filters
+        renderSidebarFilters();
+      }
+
+      // Edit creator
+      function editCreator(creatorId) {
+        // Implementation for editing a creator
+        console.log("Edit creator:", creatorId);
+
+        // For now, just show a notification
+        showNotification("Creator editing not implemented yet");
+      }
+
+      // Import patterns
+      async function importPatterns() {
+        const fileInput = document.getElementById("pattern-folder");
+        const files = fileInput.files;
+
+        if (files.length === 0) {
+          showNotification(
+            "Please select a folder with pattern files",
+            "error"
+          );
+          return;
+        }
+
+        const importStatus = document.getElementById("import-status");
+        importStatus.innerHTML =
+          '<div class="loading"></div> Scanning files...';
+
+        try {
+          // Filter files to just .nhd and .png
+          const nhdFiles = Array.from(files).filter((file) =>
+            file.name.endsWith(".nhd")
+          );
+          const pngFiles = Array.from(files).filter((file) =>
+            file.name.endsWith(".png")
+          );
+
+          const nhdMap = new Map();
+          nhdFiles.forEach((file) => {
+            const baseName = file.name.replace(".nhd", "");
+            nhdMap.set(baseName, file);
+          });
+
+          const pngMap = new Map();
+          pngFiles.forEach((file) => {
+            const baseName = file.name.replace(".png", "");
+            pngMap.set(baseName, file);
+          });
+
+          // Find matching pairs
+          const importPromises = [];
+
+          for (const [baseName, nhdFile] of nhdMap.entries()) {
+            // Skip already processed files
+            if (appData.processedFiles.has(nhdFile.name)) continue;
+
+            const pngFile = pngMap.get(baseName);
+            if (pngFile) {
+              importPromises.push(importPattern(nhdFile, pngFile));
+            } else {
+              importPromises.push(importPattern(nhdFile, null));
+            }
+          }
+
+          importStatus.innerHTML = `<div class="loading"></div> Importing ${importPromises.length} patterns...`;
+
+          // Process all imports
+          const results = await Promise.allSettled(importPromises);
+
+          // Count successes and failures
+          const successes = results.filter(
+            (r) => r.status === "fulfilled"
+          ).length;
+          const failures = results.filter(
+            (r) => r.status === "rejected"
+          ).length;
+
+          importStatus.innerHTML = `<div class="success-message">Imported ${successes} patterns successfully.${
+            failures > 0 ? ` Failed to import ${failures} patterns.` : ""
+          }</div>`;
+
+          // Save data
+          saveDataToLocalStorage();
+
+          // Refresh views
+          renderPatternGallery();
+          renderSidebarFilters();
+
+          showNotification(`Imported ${successes} patterns`);
+        } catch (error) {
+          console.error("Error importing patterns:", error);
+          importStatus.innerHTML = `<div class="error-message">Error importing patterns: ${error.message}</div>`;
+          showNotification("Error importing patterns", "error");
+        }
+      }
+
+      // Import a single pattern
+      async function importPattern(nhdFile, pngFile) {
+        return new Promise((resolve, reject) => {
+          try {
+            console.log(
+              `Importing pattern: ${nhdFile.name}, size: ${nhdFile.size} bytes`
+            );
+            console.log(`PNG file available: ${pngFile !== null}`);
+
+            const reader = new FileReader();
+
+            reader.onload = function () {
+              try {
+                console.log(
+                  `File read complete: ${nhdFile.name}, arrayBuffer size: ${reader.result.byteLength} bytes`
+                );
+
+                // Extract metadata from .nhd file
+                const metadata = extractMetadataFromNHD(reader.result);
+                console.log("Extracted metadata:", metadata);
+
+                // Generate pattern ID
+                const patternId =
+                  "pattern-" +
+                  Date.now() +
+                  "-" +
+                  Math.floor(Math.random() * 1000);
+
+                // Create pattern entry
+                const pattern = {
+                  id: patternId,
+                  fileName: nhdFile.name,
+                  thumbnailPath: pngFile ? URL.createObjectURL(pngFile) : null,
+
+                  // Metadata from .nhd file
+                  patternName: metadata.patternName || "Unnamed Pattern",
+                  creatorName: metadata.creatorName || "Unknown Creator",
+                  townName: metadata.townName || "Unknown Town",
+                  townId: metadata.townId || "",
+
+                  // User-defined metadata
+                  tags: [],
+                  setName: "",
+                  setId: "",
+                  setOrder: 0,
+                  relatedPatterns: [],
+                  notes: "",
+
+                  // System metadata
+                  dateAdded: new Date().toISOString().split("T")[0],
+                  lastModified: new Date().toISOString().split("T")[0],
+                };
+
+                console.log("Created pattern object:", {
+                  id: pattern.id,
+                  name: pattern.patternName,
+                  creator: pattern.creatorName,
+                  town: pattern.townName,
+                });
+
+                // Add pattern to data store
+                appData.patterns[patternId] = pattern;
+
+                // Create or update creator info
+                const creatorId =
+                  "creator-" +
+                  pattern.creatorName.toLowerCase().replace(/[^a-z0-9]/g, "-") +
+                  "-" +
+                  pattern.townName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+                console.log("Creator ID:", creatorId);
+
+                if (!appData.creators[creatorId]) {
+                  appData.creators[creatorId] = {
+                    id: creatorId,
+                    name: pattern.creatorName,
+                    townName: pattern.townName,
+                    patterns: [],
+                    totalBackedUp: 0,
+                    totalPatterns: 0,
+                    isComplete: false,
+                    notes: "",
+                  };
+                  console.log("Created new creator:", pattern.creatorName);
+                } else {
+                  console.log(
+                    "Adding to existing creator:",
+                    pattern.creatorName
+                  );
+                }
+
+                // Add pattern to creator
+                appData.creators[creatorId].patterns.push(patternId);
+                appData.creators[creatorId].totalBackedUp =
+                  appData.creators[creatorId].patterns.length;
+
+                // Mark file as processed
+                appData.processedFiles.add(nhdFile.name);
+                console.log(
+                  `Pattern import successful: ${pattern.patternName}`
+                );
+
+                resolve(pattern);
+              } catch (error) {
+                console.error("Error processing pattern:", error);
+                reject(error);
+              }
+            };
+
+            reader.onerror = function (event) {
+              console.error("FileReader error:", event);
+              reject(new Error("Error reading file: " + event.target.error));
+            };
+
+            reader.readAsArrayBuffer(nhdFile);
+            console.log("Started reading file:", nhdFile.name);
+          } catch (error) {
+            console.error("Unexpected error during import:", error);
+            reject(error);
+          }
+        });
+      }
+
+      // Extract metadata from .nhd file
+      function extractMetadataFromNHD(arrayBuffer) {
+        console.log(
+          "Extracting metadata from NHD file, size:",
+          arrayBuffer.byteLength
+        );
+
+        // Create a DataView for easier binary data access
+        const view = new DataView(arrayBuffer);
+
+        // Based on the C# reference code, the metadata is stored at specific offsets:
+        // Pattern name: Offset 0x10 (16), Length 40 bytes, UTF-16 encoded
+        // Creator name: Offset 0x58 (88), Length 20 bytes, UTF-16 encoded
+        // Town name: Should be immediately after creator name
+
+        try {
+          // Extract pattern name (40 bytes at offset 0x10)
+          let patternName = extractUTF16String(arrayBuffer, 0x10, 40);
+          console.log("Extracted pattern name:", patternName);
+
+          // Extract creator name (20 bytes at offset 0x58)
+          let creatorName = extractUTF16String(arrayBuffer, 0x58, 20);
+          console.log("Extracted creator name:", creatorName);
+
+          // Town name is typically after creator name
+          // For Animal Crossing: New Horizons, it's at offset 0x6C (108)
+          let townName = extractUTF16String(arrayBuffer, 0x6c, 20);
+          console.log("Extracted town name:", townName);
+
+          // Town ID - assuming it's 2 bytes after town name
+          // This is an approximation; may need adjustment based on actual file format
+          const townIdOffset = 0x6c + 20;
+          let townId = "";
+
+          if (townIdOffset + 4 <= arrayBuffer.byteLength) {
+            townId = view.getUint32(townIdOffset, true).toString();
+            console.log("Extracted town ID:", townId);
+          }
+
+          return {
+            patternName: patternName || "Unnamed Pattern",
+            creatorName: creatorName || "Unknown Creator",
+            townName: townName || "Unknown Town",
+            townId: townId || "",
+          };
+        } catch (error) {
+          console.error("Error extracting metadata:", error);
+          return {
+            patternName: "Unnamed Pattern",
+            creatorName: "Unknown Creator",
+            townName: "Unknown Town",
+            townId: "",
+          };
+        }
+      }
+
+      // Helper function to extract UTF-16 strings from binary data
+      function extractUTF16String(arrayBuffer, offset, maxLength) {
+        // Create a Uint8Array view of the array buffer
+        const bytes = new Uint8Array(arrayBuffer, offset, maxLength);
+
+        // Find the terminating null character (two consecutive zeros in UTF-16)
+        let length = 0;
+        for (let i = 0; i < bytes.length - 1; i += 2) {
+          if (bytes[i] === 0 && bytes[i + 1] === 0) {
+            length = i;
+            break;
+          }
+        }
+
+        // If no null terminator found, use the whole buffer
+        if (length === 0) {
+          length = maxLength;
+        }
+
+        // Create a Uint16Array (UTF-16) from the bytes
+        const charCodes = new Uint16Array(
+          arrayBuffer.slice(offset, offset + length)
+        );
+
+        // Convert to a JavaScript string
+        let result = "";
+        for (let i = 0; i < charCodes.length; i++) {
+          result += String.fromCharCode(charCodes[i]);
+        }
+
+        return result.trim();
+      }
+
+      // Export metadata
+      function exportMetadata() {
+        const exportData = {
+          patterns: appData.patterns,
+          creators: appData.creators,
+          sets: appData.sets,
+          processedFiles: [...appData.processedFiles],
+        };
+
+        // Create download link
+        const dataStr = JSON.stringify(exportData);
+        const dataUri =
+          "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
+
+        const exportFileName =
+          "ac-pattern-metadata-" +
+          new Date().toISOString().split("T")[0] +
+          ".json";
+
+        const linkElement = document.createElement("a");
+        linkElement.setAttribute("href", dataUri);
+        linkElement.setAttribute("download", exportFileName);
+        document.body.appendChild(linkElement);
+        linkElement.click();
+        document.body.removeChild(linkElement);
+
+        showNotification("Metadata exported successfully");
+      }
+
+      // Scan for duplicates
+      async function scanForDuplicates() {
+        const duplicatesContainer = elements.duplicatesContainer;
+        duplicatesContainer.innerHTML =
+          '<div class="loading"></div> Scanning for duplicates...';
+
+        try {
+          // Get all patterns with thumbnails
+          const patterns = Object.values(appData.patterns).filter(
+            (p) => p.thumbnailPath
+          );
+
+          if (patterns.length === 0) {
+            duplicatesContainer.innerHTML =
+              "<p>No patterns with thumbnails available to scan.</p>";
+            return;
+          }
+
+          // Compare each pattern with all others
+          const duplicates = [];
+
+          // Create a canvas for image comparison
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+
+          // Set a reasonable size for comparison
+          canvas.width = 32;
+          canvas.height = 32;
+
+          // For each pattern, compare with all others
+          for (let i = 0; i < patterns.length; i++) {
+            const patternA = patterns[i];
+
+            // Skip if already part of a duplicate set
+            if (duplicates.some((set) => set.includes(patternA.id))) continue;
+
+            const duplicateSet = [patternA.id];
+
+            for (let j = i + 1; j < patterns.length; j++) {
+              const patternB = patterns[j];
+
+              // Skip if already part of a duplicate set
+              if (duplicates.some((set) => set.includes(patternB.id))) continue;
+
+              // Compare thumbnails
+              const areEqual = await compareImages(
+                patternA.thumbnailPath,
+                patternB.thumbnailPath,
+                canvas,
+                ctx
+              );
+
+              if (areEqual) {
+                duplicateSet.push(patternB.id);
+              }
+            }
+
+            if (duplicateSet.length > 1) {
+              duplicates.push(duplicateSet);
+            }
+          }
+
+          // Render results
+          if (duplicates.length === 0) {
+            duplicatesContainer.innerHTML =
+              "<p>No duplicate patterns found.</p>";
+          } else {
+            let html = `<div class="success-message">Found ${duplicates.length} sets of duplicate patterns.</div>`;
+
+            duplicates.forEach((set, index) => {
+              html += `
+                            <div class="set-item">
+                                <h3>Duplicate Set #${index + 1}</h3>
+                                <div class="set-patterns">
+                                    ${set
+                                      .map((id) => {
+                                        const pattern = appData.patterns[id];
+                                        return `
+                                            <div class="duplicate-pattern">
+                                                <img src="${pattern.thumbnailPath}" alt="${pattern.patternName}">
+                                                <div class="pattern-info">
+                                                    <div>${pattern.patternName}</div>
+                                                    <div>by ${pattern.creatorName}</div>
+                                                </div>
+                                            </div>
+                                        `;
+                                      })
+                                      .join("")}
+                                </div>
+                                <div class="duplicate-actions">
+                                    <button class="btn btn-secondary" data-action="merge" data-set="${index}">Merge</button>
+                                    <button class="btn btn-secondary" data-action="keep-all" data-set="${index}">Keep All</button>
+                                </div>
+                            </div>
+                        `;
+            });
+
+            duplicatesContainer.innerHTML = html;
+
+            // Add event listeners for buttons
+            duplicatesContainer
+              .querySelectorAll('[data-action="merge"]')
+              .forEach((button) => {
+                button.addEventListener("click", () => {
+                  const setIndex = parseInt(button.getAttribute("data-set"));
+                  mergeDuplicates(duplicates[setIndex]);
+                });
+              });
+
+            duplicatesContainer
+              .querySelectorAll('[data-action="keep-all"]')
+              .forEach((button) => {
+                button.addEventListener("click", () => {
+                  const setIndex = parseInt(button.getAttribute("data-set"));
+                  keepAllDuplicates(duplicates[setIndex]);
+                });
+              });
+          }
+        } catch (error) {
+          console.error("Error scanning for duplicates:", error);
+          duplicatesContainer.innerHTML = `<div class="error-message">Error scanning for duplicates: ${error.message}</div>`;
+        }
+      }
+
+      // Compare two images for similarity
+      async function compareImages(src1, src2, canvas, ctx) {
+        return new Promise((resolve, reject) => {
+          const img1 = new Image();
+          const img2 = new Image();
+
+          let img1Loaded = false;
+          let img2Loaded = false;
+
+          img1.onload = function () {
+            img1Loaded = true;
+            if (img2Loaded) compareLoaded();
+          };
+
+          img2.onload = function () {
+            img2Loaded = true;
+            if (img1Loaded) compareLoaded();
+          };
+
+          img1.onerror = img2.onerror = function () {
+            reject(new Error("Error loading image for comparison"));
+          };
+
+          function compareLoaded() {
+            try {
+              // Draw first image
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img1, 0, 0, canvas.width, canvas.height);
+              const data1 = ctx.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+              ).data;
+
+              // Draw second image
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img2, 0, 0, canvas.width, canvas.height);
+              const data2 = ctx.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+              ).data;
+
+              // Compare pixel data
+              let diff = 0;
+              let total = data1.length;
+
+              for (let i = 0; i < total; i += 4) {
+                // Calculate color difference in RGB channels
+                diff += Math.abs(data1[i] - data2[i]); // R
+                diff += Math.abs(data1[i + 1] - data2[i + 1]); // G
+                diff += Math.abs(data1[i + 2] - data2[i + 2]); // B
+              }
+
+              // Calculate average difference per pixel
+              const avgDiff = diff / (total / 4);
+
+              // Consider images equal if the difference is below threshold
+              // Adjust this threshold based on your needs
+              resolve(avgDiff < 10);
+            } catch (error) {
+              reject(error);
+            }
+          }
+
+          // Set image sources to start loading
+          img1.src = src1;
+          img2.src = src2;
+        });
+      }
+
+      // Merge duplicate patterns
+      function mergeDuplicates(patternIds) {
+        if (!patternIds || patternIds.length < 2) return;
+
+        // Keep the first pattern as the "primary" one
+        const primaryId = patternIds[0];
+        const primary = appData.patterns[primaryId];
+
+        if (!primary) return;
+
+        // Collect tags from all duplicates
+        const allTags = new Set(primary.tags);
+
+        // Process each duplicate
+        for (let i = 1; i < patternIds.length; i++) {
+          const duplicateId = patternIds[i];
+          const duplicate = appData.patterns[duplicateId];
+
+          if (!duplicate) continue;
+
+          // Collect tags
+          duplicate.tags.forEach((tag) => allTags.add(tag));
+
+          // If the duplicate is in a set but the primary isn't, move primary to that set
+          if (duplicate.setId && !primary.setId) {
+            primary.setId = duplicate.setId;
+            primary.setName = duplicate.setName;
+            primary.setOrder = duplicate.setOrder;
+
+            // Update set data
+            const set = appData.sets[duplicate.setId];
+            if (set) {
+              set.patterns = set.patterns.map((id) =>
+                id === duplicateId ? primaryId : id
+              );
+            }
+          }
+
+          // Combine notes if any
+          if (duplicate.notes && duplicate.notes !== primary.notes) {
+            primary.notes = primary.notes
+              ? primary.notes + "\n\nFrom merged pattern: " + duplicate.notes
+              : "From merged pattern: " + duplicate.notes;
+          }
+
+          // Remove from creator's patterns
+          const creatorId = Object.keys(appData.creators).find((cid) =>
+            appData.creators[cid].patterns.includes(duplicateId)
+          );
+
+          if (creatorId && appData.creators[creatorId]) {
+            appData.creators[creatorId].patterns = appData.creators[
+              creatorId
+            ].patterns.filter((id) => id !== duplicateId);
+            appData.creators[creatorId].totalBackedUp =
+              appData.creators[creatorId].patterns.length;
+          }
+
+          // Delete the duplicate pattern
+          delete appData.patterns[duplicateId];
+        }
+
+        // Update the primary pattern with all collected tags
+        primary.tags = [...allTags];
+        primary.lastModified = new Date().toISOString().split("T")[0];
+
+        // Save data
+        saveDataToLocalStorage();
+
+        // Refresh views
+        scanForDuplicates();
+        renderPatternGallery();
+        renderSidebarFilters();
+
+        showNotification("Duplicate patterns merged successfully");
+      }
+
+      // Keep all duplicate patterns but mark them as related
+      function keepAllDuplicates(patternIds) {
+        if (!patternIds || patternIds.length < 2) return;
+
+        // Update each pattern to reference others as related
+        patternIds.forEach((id) => {
+          const pattern = appData.patterns[id];
+          if (!pattern) return;
+
+          // Set related patterns (excluding self)
+          pattern.relatedPatterns = patternIds.filter((pid) => pid !== id);
+          pattern.lastModified = new Date().toISOString().split("T")[0];
+        });
+
+        // Save data
+        saveDataToLocalStorage();
+
+        // Refresh views
+        scanForDuplicates();
+
+        showNotification("Patterns marked as related");
+      }
+
+      // Show notification
+      function showNotification(message, type = "success") {
+        const notification = elements.notification;
+        notification.textContent = message;
+        notification.className = "notification show " + type;
+
+        setTimeout(() => {
+          notification.classList.remove("show");
+        }, 3000);
+      }
+
+      // Debounce function for search input
+      function debounce(func, wait) {
+        let timeout;
+        return function (...args) {
+          const context = this;
+          clearTimeout(timeout);
+          timeout = setTimeout(() => func.apply(context, args), wait);
+        };
+      }
+
+      // Initialize the app
+      document.addEventListener("DOMContentLoaded", initApp);
+    </script>
+  </body>
+</html>
