@@ -750,6 +750,7 @@
       function initApp() {
         loadDataFromLocalStorage();
         setupEventListeners();
+        setupMetadataImport();
         renderPatternGallery();
         renderSidebarFilters();
       }
@@ -3073,6 +3074,338 @@
         }
 
         return result.trim();
+      }
+
+      // Add import metadata functionality
+      function setupMetadataImport() {
+        // Add import metadata button next to export button
+        const exportBtn = document.getElementById("export-btn");
+        const importMetadataBtn = document.createElement("button");
+        importMetadataBtn.id = "import-metadata-btn";
+        importMetadataBtn.className = "btn btn-secondary";
+        importMetadataBtn.textContent = "Import Metadata";
+        importMetadataBtn.style.marginRight = "10px";
+
+        // Insert before export button
+        exportBtn.parentNode.insertBefore(importMetadataBtn, exportBtn);
+
+        // Create import metadata modal
+        const importMetadataModal = document.createElement("div");
+        importMetadataModal.className = "modal-backdrop";
+        importMetadataModal.id = "import-metadata-modal";
+
+        importMetadataModal.innerHTML = `
+        <div class="modal">
+            <button class="modal-close">&times;</button>
+            <h2 class="modal-title">Import Pattern Metadata</h2>
+            <div class="form-group">
+                <label for="metadata-file">Select Metadata JSON File</label>
+                <input type="file" id="metadata-file" accept=".json">
+            </div>
+            <div id="metadata-import-status"></div>
+            <div class="import-options">
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="merge-metadata" checked>
+                        Merge with existing data (recommended)
+                    </label>
+                    <p class="help-text">If unchecked, all existing metadata will be replaced with the imported data.</p>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="update-existing" checked>
+                        Update existing patterns
+                    </label>
+                    <p class="help-text">If unchecked, only new patterns will be added.</p>
+                </div>
+            </div>
+            <button class="btn" id="start-metadata-import-btn">Import Metadata</button>
+        </div>
+    `;
+
+        document.body.appendChild(importMetadataModal);
+
+        // Add event listener for import button
+        importMetadataBtn.addEventListener("click", () => {
+          document.getElementById("metadata-file").value = "";
+          document.getElementById("metadata-import-status").innerHTML = "";
+          importMetadataModal.style.display = "flex";
+        });
+
+        // Close button event listener
+        importMetadataModal
+          .querySelector(".modal-close")
+          .addEventListener("click", () => {
+            importMetadataModal.style.display = "none";
+          });
+
+        // Start import button event listener
+        document
+          .getElementById("start-metadata-import-btn")
+          .addEventListener("click", importMetadata);
+      }
+
+      // Import metadata from JSON file
+      function importMetadata() {
+        const fileInput = document.getElementById("metadata-file");
+        const mergeMetadata = document.getElementById("merge-metadata").checked;
+        const updateExisting =
+          document.getElementById("update-existing").checked;
+        const statusElement = document.getElementById("metadata-import-status");
+
+        if (!fileInput.files || fileInput.files.length === 0) {
+          statusElement.innerHTML =
+            '<div class="error-message">Please select a metadata file to import.</div>';
+          return;
+        }
+
+        const file = fileInput.files[0];
+
+        // Check file type
+        if (!file.name.endsWith(".json")) {
+          statusElement.innerHTML =
+            '<div class="error-message">Please select a valid JSON metadata file.</div>';
+          return;
+        }
+
+        statusElement.innerHTML =
+          '<div class="loading"></div> Reading metadata file...';
+
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+          try {
+            const importData = JSON.parse(e.target.result);
+
+            // Validate the imported data structure
+            if (
+              !importData.patterns ||
+              !importData.creators ||
+              !importData.sets
+            ) {
+              throw new Error(
+                "Invalid metadata format. File should contain patterns, creators, and sets."
+              );
+            }
+
+            // Backup current data
+            const backupData = {
+              patterns: { ...appData.patterns },
+              creators: { ...appData.creators },
+              sets: { ...appData.sets },
+              processedFiles: new Set([...appData.processedFiles]),
+            };
+
+            try {
+              if (mergeMetadata) {
+                // Merge with existing data
+                mergeImportedData(importData, updateExisting);
+                statusElement.innerHTML =
+                  '<div class="success-message">Metadata successfully merged.</div>';
+              } else {
+                // Replace existing data
+                if (
+                  confirm(
+                    "This will replace all existing metadata. Are you sure you want to continue?"
+                  )
+                ) {
+                  replaceWithImportedData(importData);
+                  statusElement.innerHTML =
+                    '<div class="success-message">Metadata successfully imported.</div>';
+                } else {
+                  statusElement.innerHTML = "";
+                  return;
+                }
+              }
+
+              // Save changes
+              saveDataToLocalStorage();
+
+              // Refresh views
+              renderPatternGallery();
+              renderSidebarFilters();
+
+              // Show success message with stats
+              const patternCount = Object.keys(importData.patterns).length;
+              const creatorCount = Object.keys(importData.creators).length;
+              const setCount = Object.keys(importData.sets).length;
+
+              showNotification(
+                `Imported ${patternCount} patterns, ${creatorCount} creators, and ${setCount} sets`
+              );
+
+              // Close modal after successful import
+              setTimeout(() => {
+                document.getElementById("import-metadata-modal").style.display =
+                  "none";
+              }, 2000);
+            } catch (processError) {
+              console.error("Error processing imported data:", processError);
+
+              // Restore from backup
+              appData.patterns = backupData.patterns;
+              appData.creators = backupData.creators;
+              appData.sets = backupData.sets;
+              appData.processedFiles = backupData.processedFiles;
+
+              statusElement.innerHTML = `<div class="error-message">Error processing imported data: ${processError.message}</div>`;
+            }
+          } catch (parseError) {
+            console.error("Error parsing JSON:", parseError);
+            statusElement.innerHTML = `<div class="error-message">Error parsing metadata file: ${parseError.message}</div>`;
+          }
+        };
+
+        reader.onerror = function () {
+          statusElement.innerHTML =
+            '<div class="error-message">Error reading the file.</div>';
+        };
+
+        reader.readAsText(file);
+      }
+
+      // Merge imported data with existing data
+      function mergeImportedData(importData, updateExisting) {
+        // Process patterns
+        for (const [id, pattern] of Object.entries(importData.patterns)) {
+          if (appData.patterns[id]) {
+            // Pattern already exists
+            if (updateExisting) {
+              // Keep file references from existing pattern
+              const existingPattern = appData.patterns[id];
+              pattern.fileName = existingPattern.fileName;
+              pattern.thumbnailPath = existingPattern.thumbnailPath;
+              pattern.thumbnailHash = existingPattern.thumbnailHash;
+
+              // Update existing pattern
+              appData.patterns[id] = pattern;
+            }
+            // If not updateExisting, keep the existing pattern unchanged
+          } else {
+            // New pattern, just add it (note that thumbnailPath will be a URL that won't be valid)
+            pattern.thumbnailPath = null; // Clear invalid thumbnail path
+            pattern.thumbnailHash = null; // Clear hash since thumbnail is not available
+            appData.patterns[id] = pattern;
+          }
+        }
+
+        // Process creators
+        for (const [id, creator] of Object.entries(importData.creators)) {
+          if (appData.creators[id]) {
+            // Merge pattern arrays without duplicates
+            const existingCreator = appData.creators[id];
+            creator.patterns = [
+              ...new Set([...existingCreator.patterns, ...creator.patterns]),
+            ];
+
+            // Update creator info if updateExisting is true
+            if (updateExisting) {
+              creator.totalBackedUp = creator.patterns.length;
+              appData.creators[id] = creator;
+            } else {
+              // Just update the patterns list
+              existingCreator.patterns = creator.patterns;
+              existingCreator.totalBackedUp = creator.patterns.length;
+            }
+          } else {
+            // New creator, just add it
+            appData.creators[id] = creator;
+          }
+        }
+
+        // Process sets
+        for (const [id, set] of Object.entries(importData.sets)) {
+          if (appData.sets[id]) {
+            // Merge pattern arrays without duplicates
+            const existingSet = appData.sets[id];
+            set.patterns = [
+              ...new Set([...existingSet.patterns, ...set.patterns]),
+            ];
+
+            // Update set if updateExisting is true
+            if (updateExisting) {
+              appData.sets[id] = set;
+            } else {
+              // Just update the patterns list
+              existingSet.patterns = set.patterns;
+            }
+          } else {
+            // New set, just add it
+            appData.sets[id] = set;
+          }
+        }
+
+        // Process processed files list
+        if (
+          importData.processedFiles &&
+          Array.isArray(importData.processedFiles)
+        ) {
+          importData.processedFiles.forEach((file) => {
+            appData.processedFiles.add(file);
+          });
+        }
+
+        // Update all patterns to make sure sets and creators are consistent
+        updateRelationships();
+      }
+
+      // Replace existing data with imported data
+      function replaceWithImportedData(importData) {
+        // Replace patterns, but keep thumbnail references where possible
+        const newPatterns = {};
+        for (const [id, pattern] of Object.entries(importData.patterns)) {
+          newPatterns[id] = pattern;
+
+          // If pattern existed before, keep its thumbnail reference
+          if (appData.patterns[id]) {
+            newPatterns[id].thumbnailPath = appData.patterns[id].thumbnailPath;
+            newPatterns[id].thumbnailHash = appData.patterns[id].thumbnailHash;
+          } else {
+            // Clear invalid thumbnail paths for new patterns
+            newPatterns[id].thumbnailPath = null;
+            newPatterns[id].thumbnailHash = null;
+          }
+        }
+
+        // Replace everything with imported data
+        appData.patterns = newPatterns;
+        appData.creators = importData.creators;
+        appData.sets = importData.sets;
+
+        // Process processed files list
+        if (
+          importData.processedFiles &&
+          Array.isArray(importData.processedFiles)
+        ) {
+          appData.processedFiles = new Set(importData.processedFiles);
+        }
+
+        // Update all patterns to make sure sets and creators are consistent
+        updateRelationships();
+      }
+
+      // Update relationships between patterns, creators, and sets
+      function updateRelationships() {
+        // Ensure all patterns in sets have correct set references
+        for (const [setId, set] of Object.entries(appData.sets)) {
+          set.patterns.forEach((patternId, index) => {
+            const pattern = appData.patterns[patternId];
+            if (pattern) {
+              pattern.setId = setId;
+              pattern.setName = set.name;
+              pattern.setOrder = index + 1;
+            }
+          });
+        }
+
+        // Ensure all patterns listed in creators exist
+        for (const [creatorId, creator] of Object.entries(appData.creators)) {
+          // Filter out non-existent patterns
+          creator.patterns = creator.patterns.filter(
+            (patternId) => appData.patterns[patternId]
+          );
+          creator.totalBackedUp = creator.patterns.length;
+        }
       }
 
       // Export metadata
