@@ -162,6 +162,10 @@
         object-fit: contain;
         background-color: #f8f8f8;
         border-bottom: 1px solid var(--border-color);
+        image-rendering: pixelated; /* Modern browsers */
+        image-rendering: -moz-crisp-edges; /* Firefox */
+        image-rendering: crisp-edges; /* Safari */
+        -ms-interpolation-mode: nearest-neighbor; /* IE (deprecated) */
       }
 
       .pattern-info {
@@ -233,6 +237,13 @@
         margin-bottom: 15px;
         padding-bottom: 10px;
         border-bottom: 1px solid var(--border-color);
+      }
+
+      .pixel-art-image {
+        image-rendering: pixelated;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: crisp-edges;
+        -ms-interpolation-mode: nearest-neighbor;
       }
 
       .sidebar {
@@ -1088,6 +1099,9 @@
         document.getElementById("modal-pattern-img").src =
           pattern.thumbnailPath ||
           "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
+        document
+          .getElementById("modal-pattern-img")
+          .classList.add("pixel-art-image");
         document.getElementById("pattern-name").value = pattern.patternName;
         document.getElementById("creator-name").value = pattern.creatorName;
         document.getElementById("town-name").value = pattern.townName;
@@ -1595,30 +1609,140 @@
             file.name.endsWith(".png")
           );
 
-          const nhdMap = new Map();
-          nhdFiles.forEach((file) => {
-            const baseName = file.name.replace(".nhd", "");
-            nhdMap.set(baseName, file);
-          });
+          // Map to group pattern files by their pattern and creator name
+          const patternGroups = new Map();
 
-          const pngMap = new Map();
-          pngFiles.forEach((file) => {
-            const baseName = file.name.replace(".png", "");
-            pngMap.set(baseName, file);
-          });
+          // Used thumbnails tracking
+          const usedThumbnails = new Set();
 
-          // Find matching pairs
-          const importPromises = [];
-
-          for (const [baseName, nhdFile] of nhdMap.entries()) {
+          // First, group patterns by their name and creator
+          for (const nhdFile of nhdFiles) {
             // Skip already processed files
             if (appData.processedFiles.has(nhdFile.name)) continue;
 
-            const pngFile = pngMap.get(baseName);
-            if (pngFile) {
-              importPromises.push(importPattern(nhdFile, pngFile));
-            } else {
-              importPromises.push(importPattern(nhdFile, null));
+            // Extract metadata
+            const metadata = await extractMetadataFromFile(nhdFile);
+            const key = `${metadata.patternName}-${metadata.creatorName}`;
+
+            if (!patternGroups.has(key)) {
+              patternGroups.set(key, []);
+            }
+
+            patternGroups.get(key).push({
+              file: nhdFile,
+              metadata: metadata,
+            });
+          }
+
+          // Process each group to assign thumbnails in order
+          const importPromises = [];
+
+          for (const [key, patterns] of patternGroups.entries()) {
+            // Sort patterns (optional, depending on your preference)
+            // This sorts by the numeric prefix if present in the filename
+            patterns.sort((a, b) => {
+              const numA = parseInt(a.file.name.match(/^(\d+)/)?.[1] || "0");
+              const numB = parseInt(b.file.name.match(/^(\d+)/)?.[1] || "0");
+              return numA - numB;
+            });
+
+            // For each pattern in the group, find the corresponding thumbnail
+            for (let i = 0; i < patterns.length; i++) {
+              const pattern = patterns[i];
+              const metadata = pattern.metadata;
+
+              // Generate the base thumbnail name
+              const sanitizedBaseName = sanitizeFilename(
+                `${metadata.patternName} - ${metadata.creatorName}`
+              );
+              const normalizedBaseName =
+                normalizeForComparison(sanitizedBaseName);
+
+              // Find matching thumbnails in order
+              let targetThumbnail = null;
+
+              // First try the exact match for the first pattern
+              if (i === 0) {
+                const exactMatch = pngFiles.find((file) => {
+                  if (usedThumbnails.has(file.name)) return false;
+
+                  const normalizedFileName = normalizeForComparison(file.name);
+                  const baseNameWithoutExt = normalizedBaseName;
+
+                  return (
+                    normalizedFileName === `${baseNameWithoutExt}.png` ||
+                    normalizedFileName === `${baseNameWithoutExt}_x8.png`
+                  );
+                });
+
+                if (exactMatch) {
+                  targetThumbnail = exactMatch;
+                  usedThumbnails.add(exactMatch.name);
+                }
+              }
+
+              // If no exact match or not the first pattern, try numbered versions
+              if (!targetThumbnail) {
+                const suffix = i > 0 ? `_${i + 1}` : "";
+
+                // Try x8 version first (higher quality)
+                const x8Match = pngFiles.find((file) => {
+                  if (usedThumbnails.has(file.name)) return false;
+
+                  const normalizedFileName = normalizeForComparison(file.name);
+                  const expectedName = `${normalizedBaseName}${suffix}_x8.png`;
+
+                  return normalizedFileName === expectedName;
+                });
+
+                if (x8Match) {
+                  targetThumbnail = x8Match;
+                  usedThumbnails.add(x8Match.name);
+                } else {
+                  // Try regular version
+                  const regularMatch = pngFiles.find((file) => {
+                    if (usedThumbnails.has(file.name)) return false;
+
+                    const normalizedFileName = normalizeForComparison(
+                      file.name
+                    );
+                    const expectedName = `${normalizedBaseName}${suffix}.png`;
+
+                    return normalizedFileName === expectedName;
+                  });
+
+                  if (regularMatch) {
+                    targetThumbnail = regularMatch;
+                    usedThumbnails.add(regularMatch.name);
+                  }
+                }
+              }
+
+              // If still no match, try to find any unused thumbnail with the base name
+              if (!targetThumbnail) {
+                for (const pngFile of pngFiles) {
+                  if (usedThumbnails.has(pngFile.name)) continue;
+
+                  const normalizedFileName = normalizeForComparison(
+                    pngFile.name
+                  );
+
+                  if (
+                    normalizedFileName.startsWith(normalizedBaseName) &&
+                    (normalizedFileName.endsWith(".png") ||
+                      normalizedFileName.endsWith("_x8.png"))
+                  ) {
+                    targetThumbnail = pngFile;
+                    usedThumbnails.add(pngFile.name);
+                    break;
+                  }
+                }
+              }
+
+              // Import the pattern with the found thumbnail
+              importPromises.push(
+                importPattern(pattern.file, targetThumbnail, metadata)
+              );
             }
           }
 
@@ -1654,8 +1778,59 @@
         }
       }
 
+      // Helper function to sanitize filenames exactly like the C# code
+      function sanitizeFilename(filename) {
+        // First normalize whitespace (collapse multiple spaces to single space)
+        filename = filename.replace(/\s+/g, " ");
+
+        // Then perform the Windows character sanitization
+        return filename
+          .replace(/\?/g, "_")
+          .replace(/\//g, "_")
+          .replace(/\\/g, "_")
+          .replace(/\*/g, "_")
+          .replace(/:/g, "_")
+          .replace(/</g, "_")
+          .replace(/>/g, "_")
+          .replace(/\|/g, "_")
+          .replace(/"/g, "_");
+      }
+
+      // When matching thumbnails, implement a more flexible string comparison
+      function normalizeForComparison(str) {
+        // Remove all whitespace for comparison purposes
+        return str.replace(/\s+/g, "");
+      }
+
+      // Helper function to escape special characters in regular expressions
+      function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      }
+
+      // Extract metadata from a file
+      async function extractMetadataFromFile(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onload = function () {
+            try {
+              const metadata = extractMetadataFromNHD(reader.result);
+              resolve(metadata);
+            } catch (error) {
+              reject(error);
+            }
+          };
+
+          reader.onerror = function (event) {
+            reject(new Error("Error reading file: " + event.target.error));
+          };
+
+          reader.readAsArrayBuffer(file);
+        });
+      }
+
       // Import a single pattern
-      async function importPattern(nhdFile, pngFile) {
+      async function importPattern(nhdFile, pngFile, metadata) {
         return new Promise((resolve, reject) => {
           try {
             console.log(
@@ -1663,114 +1838,81 @@
             );
             console.log(`PNG file available: ${pngFile !== null}`);
 
-            const reader = new FileReader();
+            // Generate pattern ID
+            const patternId =
+              "pattern-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
-            reader.onload = function () {
-              try {
-                console.log(
-                  `File read complete: ${nhdFile.name}, arrayBuffer size: ${reader.result.byteLength} bytes`
-                );
+            // Create pattern entry
+            const pattern = {
+              id: patternId,
+              fileName: nhdFile.name,
+              thumbnailPath: pngFile ? URL.createObjectURL(pngFile) : null,
 
-                // Extract metadata from .nhd file
-                const metadata = extractMetadataFromNHD(reader.result);
-                console.log("Extracted metadata:", metadata);
+              // Metadata from .nhd file
+              patternName: metadata.patternName || "Unnamed Pattern",
+              creatorName: metadata.creatorName || "Unknown Creator",
+              townName: metadata.townName || "Unknown Town",
+              townId: metadata.townId || "",
 
-                // Generate pattern ID
-                const patternId =
-                  "pattern-" +
-                  Date.now() +
-                  "-" +
-                  Math.floor(Math.random() * 1000);
+              // User-defined metadata
+              tags: [],
+              setName: "",
+              setId: "",
+              setOrder: 0,
+              relatedPatterns: [],
+              notes: "",
 
-                // Create pattern entry
-                const pattern = {
-                  id: patternId,
-                  fileName: nhdFile.name,
-                  thumbnailPath: pngFile ? URL.createObjectURL(pngFile) : null,
-
-                  // Metadata from .nhd file
-                  patternName: metadata.patternName || "Unnamed Pattern",
-                  creatorName: metadata.creatorName || "Unknown Creator",
-                  townName: metadata.townName || "Unknown Town",
-                  townId: metadata.townId || "",
-
-                  // User-defined metadata
-                  tags: [],
-                  setName: "",
-                  setId: "",
-                  setOrder: 0,
-                  relatedPatterns: [],
-                  notes: "",
-
-                  // System metadata
-                  dateAdded: new Date().toISOString().split("T")[0],
-                  lastModified: new Date().toISOString().split("T")[0],
-                };
-
-                console.log("Created pattern object:", {
-                  id: pattern.id,
-                  name: pattern.patternName,
-                  creator: pattern.creatorName,
-                  town: pattern.townName,
-                });
-
-                // Add pattern to data store
-                appData.patterns[patternId] = pattern;
-
-                // Create or update creator info
-                const creatorId =
-                  "creator-" +
-                  pattern.creatorName.toLowerCase().replace(/[^a-z0-9]/g, "-") +
-                  "-" +
-                  pattern.townName.toLowerCase().replace(/[^a-z0-9]/g, "-");
-                console.log("Creator ID:", creatorId);
-
-                if (!appData.creators[creatorId]) {
-                  appData.creators[creatorId] = {
-                    id: creatorId,
-                    name: pattern.creatorName,
-                    townName: pattern.townName,
-                    patterns: [],
-                    totalBackedUp: 0,
-                    totalPatterns: 0,
-                    isComplete: false,
-                    notes: "",
-                  };
-                  console.log("Created new creator:", pattern.creatorName);
-                } else {
-                  console.log(
-                    "Adding to existing creator:",
-                    pattern.creatorName
-                  );
-                }
-
-                // Add pattern to creator
-                appData.creators[creatorId].patterns.push(patternId);
-                appData.creators[creatorId].totalBackedUp =
-                  appData.creators[creatorId].patterns.length;
-
-                // Mark file as processed
-                appData.processedFiles.add(nhdFile.name);
-                console.log(
-                  `Pattern import successful: ${pattern.patternName}`
-                );
-
-                resolve(pattern);
-              } catch (error) {
-                console.error("Error processing pattern:", error);
-                reject(error);
-              }
+              // System metadata
+              dateAdded: new Date().toISOString().split("T")[0],
+              lastModified: new Date().toISOString().split("T")[0],
             };
 
-            reader.onerror = function (event) {
-              console.error("FileReader error:", event);
-              reject(new Error("Error reading file: " + event.target.error));
-            };
+            console.log("Created pattern object:", {
+              id: pattern.id,
+              name: pattern.patternName,
+              creator: pattern.creatorName,
+              town: pattern.townName,
+            });
 
-            reader.readAsArrayBuffer(nhdFile);
-            console.log("Started reading file:", nhdFile.name);
+            // Add pattern to data store
+            appData.patterns[patternId] = pattern;
+
+            // Create or update creator info
+            const creatorId =
+              "creator-" +
+              pattern.creatorName.toLowerCase().replace(/[^a-z0-9]/g, "-") +
+              "-" +
+              pattern.townName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+            console.log("Creator ID:", creatorId);
+
+            if (!appData.creators[creatorId]) {
+              appData.creators[creatorId] = {
+                id: creatorId,
+                name: pattern.creatorName,
+                townName: pattern.townName,
+                patterns: [],
+                totalBackedUp: 0,
+                totalPatterns: 0,
+                isComplete: false,
+                notes: "",
+              };
+              console.log("Created new creator:", pattern.creatorName);
+            } else {
+              console.log("Adding to existing creator:", pattern.creatorName);
+            }
+
+            // Add pattern to creator
+            appData.creators[creatorId].patterns.push(patternId);
+            appData.creators[creatorId].totalBackedUp =
+              appData.creators[creatorId].patterns.length;
+
+            // Mark file as processed
+            appData.processedFiles.add(nhdFile.name);
+            console.log(`Pattern import successful: ${pattern.patternName}`);
+
+            resolve(pattern);
           } catch (error) {
-            console.error("Unexpected error during import:", error);
+            console.error("Error processing pattern:", error);
             reject(error);
           }
         });
