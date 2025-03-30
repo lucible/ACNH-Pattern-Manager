@@ -723,6 +723,8 @@ CURRENT BUG LIST (address later)
           sets: new Set(),
           search: "",
         },
+        selectionMode: false,
+        selectedPatterns: new Set(),
       };
 
       // Global settings object
@@ -765,6 +767,7 @@ CURRENT BUG LIST (address later)
         setupMetadataImport();
         setupAppSettings();
         renderPatternGallery();
+        setupMultiSelectUI();
         renderSidebarFilters();
         enhanceFiltering();
       }
@@ -1137,11 +1140,88 @@ CURRENT BUG LIST (address later)
         });
       }
 
+      // Add to setupEventListeners function - new button for selection mode
+      function setupMultiSelectUI() {
+        // Create selection mode toggle button
+        const actionBar = document.querySelector(".action-bar");
+        const selectionBtn = document.createElement("button");
+        selectionBtn.id = "selection-mode-btn";
+        selectionBtn.className = "btn btn-secondary";
+        selectionBtn.innerHTML = '<span class="selection-icon">☐</span> Select';
+
+        // Insert before the Sort By button
+        const sortByBtn = actionBar.querySelector("div:last-child button");
+        sortByBtn.parentNode.insertBefore(selectionBtn, sortByBtn);
+
+        // Add event listener
+        selectionBtn.addEventListener("click", toggleSelectionMode);
+
+        // Add selection action panel (hidden initially)
+        const selectionPanel = document.createElement("div");
+        selectionPanel.id = "selection-panel";
+        selectionPanel.className = "selection-panel";
+        selectionPanel.innerHTML = `
+          <div class="selection-count">0 patterns selected</div>
+          <div class="selection-actions">
+            <button id="add-tags-btn" class="btn btn-small">Add Tags</button>
+            <button id="add-to-set-btn" class="btn btn-small">Add to Set</button>
+            <button id="create-set-btn" class="btn btn-small">Create Set</button>
+          </div>
+          <button id="clear-selection-btn" class="btn btn-small btn-secondary">Clear</button>
+        `;
+
+        // Add to document
+        document.querySelector(".container").appendChild(selectionPanel);
+
+        // Add event listeners for selection panel buttons
+        document
+          .getElementById("add-tags-btn")
+          .addEventListener("click", () => batchAddTags());
+        document
+          .getElementById("add-to-set-btn")
+          .addEventListener("click", () => batchAddToSet());
+        document
+          .getElementById("create-set-btn")
+          .addEventListener("click", () => batchCreateSet());
+        document
+          .getElementById("clear-selection-btn")
+          .addEventListener("click", clearSelection);
+
+        // Add styles for selection mode
+        addSelectionStyles();
+      }
+
+      // Toggle selection mode
+      function toggleSelectionMode() {
+        appData.selectionMode = !appData.selectionMode;
+
+        // Update button appearance
+        const selectionBtn = document.getElementById("selection-mode-btn");
+        if (appData.selectionMode) {
+          selectionBtn.classList.add("active");
+          selectionBtn.innerHTML =
+            '<span class="selection-icon">☑</span> Cancel';
+        } else {
+          selectionBtn.classList.remove("active");
+          selectionBtn.innerHTML =
+            '<span class="selection-icon">☐</span> Select';
+          clearSelection();
+        }
+
+        // Re-render pattern gallery to show/hide checkboxes
+        renderPatternGallery();
+      }
+
       // Create a pattern card element
       function createPatternCard(pattern) {
         const card = document.createElement("div");
         card.className = "pattern-card";
         card.setAttribute("data-id", pattern.id);
+
+        // Add selected class if pattern is selected
+        if (appData.selectedPatterns.has(pattern.id)) {
+          card.classList.add("selected");
+        }
 
         // Determine thumbnail source
         let thumbnailSrc;
@@ -1160,30 +1240,565 @@ CURRENT BUG LIST (address later)
             "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
         }
 
+        // Selection checkbox (only visible in selection mode)
+        const selectionCheckbox = appData.selectionMode
+          ? `<div class="pattern-select">
+              <input type="checkbox" id="select-${pattern.id}" ${
+              appData.selectedPatterns.has(pattern.id) ? "checked" : ""
+            }>
+              <label for="select-${pattern.id}"></label>
+            </div>`
+          : "";
+
         const html = `
-    <img class="pattern-thumbnail" src="${thumbnailSrc}" alt="${
+          ${selectionCheckbox}
+          <img class="pattern-thumbnail" src="${thumbnailSrc}" alt="${
           pattern.patternName
         }" 
-         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+'">
-    <div class="pattern-info">
-      <div class="pattern-name">${pattern.patternName}</div>
-      <div class="pattern-creator">by ${pattern.creatorName} of ${
+              onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+'">
+          <div class="pattern-info">
+            <div class="pattern-name">${pattern.patternName}</div>
+            <div class="pattern-creator">by ${pattern.creatorName} of ${
           pattern.townName
         }</div>
-      <div class="tag-list">
-        ${pattern.tags.map((tag) => `<span class="tag">${tag}</span>`).join("")}
-      </div>
-    </div>
-  `;
+            <div class="tag-list">
+              ${pattern.tags
+                .map((tag) => `<span class="tag">${tag}</span>`)
+                .join("")}
+            </div>
+          </div>
+        `;
 
         card.innerHTML = html;
 
-        // Add click event to open pattern detail modal
-        card.addEventListener("click", () => {
-          openPatternDetail(pattern.id);
+        // Modified click event handling
+        card.addEventListener("click", (e) => {
+          // Check if clicking on checkbox
+          if (e.target.type === "checkbox" || e.target.tagName === "LABEL") {
+            e.stopPropagation();
+            return;
+          }
+
+          // For normal clicks when not in selection mode, open pattern detail
+          if (!appData.selectionMode && !e.ctrlKey && !e.metaKey) {
+            openPatternDetail(pattern.id);
+            return;
+          }
+
+          // For Ctrl/Cmd+click or in selection mode, toggle selection
+          togglePatternSelection(pattern.id);
+          e.preventDefault();
         });
 
+        // Add specific handler for the checkbox
+        const checkbox = card.querySelector(`#select-${pattern.id}`);
+        if (checkbox) {
+          checkbox.addEventListener("change", (e) => {
+            e.stopPropagation();
+            togglePatternSelection(pattern.id);
+          });
+        }
+
         return card;
+      }
+
+      // Toggle pattern selection
+      function togglePatternSelection(patternId) {
+        if (appData.selectedPatterns.has(patternId)) {
+          appData.selectedPatterns.delete(patternId);
+        } else {
+          appData.selectedPatterns.add(patternId);
+        }
+
+        // Update UI
+        updateSelectionUI();
+
+        // If not in selection mode but patterns are selected, enter selection mode
+        if (!appData.selectionMode && appData.selectedPatterns.size > 0) {
+          toggleSelectionMode();
+        }
+      }
+
+      // Update selection UI elements
+      function updateSelectionUI() {
+        // Update card styling
+        document.querySelectorAll(".pattern-card").forEach((card) => {
+          const patternId = card.getAttribute("data-id");
+          if (appData.selectedPatterns.has(patternId)) {
+            card.classList.add("selected");
+            const checkbox = card.querySelector(`#select-${patternId}`);
+            if (checkbox) checkbox.checked = true;
+          } else {
+            card.classList.remove("selected");
+            const checkbox = card.querySelector(`#select-${patternId}`);
+            if (checkbox) checkbox.checked = false;
+          }
+        });
+
+        // Update selection panel
+        const panel = document.getElementById("selection-panel");
+        const count = appData.selectedPatterns.size;
+
+        if (count > 0) {
+          panel.classList.add("active");
+          panel.querySelector(
+            ".selection-count"
+          ).textContent = `${count} pattern${count !== 1 ? "s" : ""} selected`;
+        } else {
+          panel.classList.remove("active");
+        }
+      }
+
+      // Clear pattern selection
+      function clearSelection() {
+        appData.selectedPatterns.clear();
+        updateSelectionUI();
+      }
+
+      // Add tags to multiple patterns
+      function batchAddTags() {
+        if (appData.selectedPatterns.size === 0) return;
+
+        // Create modal for tag input
+        const modal = document.createElement("div");
+        modal.className = "modal-backdrop";
+        modal.style.display = "flex";
+
+        modal.innerHTML = `
+    <div class="modal">
+      <button class="modal-close">&times;</button>
+      <h2 class="modal-title">Add Tags to ${appData.selectedPatterns.size} Patterns</h2>
+      
+      <div class="form-group">
+        <label>Enter Tags</label>
+        <div class="tag-input" id="batch-tag-input">
+          <input type="text" placeholder="Add a tag...">
+        </div>
+        <p class="help-text">Enter each tag and press Enter or comma to add</p>
+      </div>
+      
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="batch-tag-merge" checked>
+          Merge with existing tags (uncheck to replace all tags)
+        </label>
+      </div>
+      
+      <button class="btn" id="apply-batch-tags-btn">Apply Tags</button>
+    </div>
+  `;
+
+        document.body.appendChild(modal);
+
+        // Setup tag input
+        const tagInput = modal.querySelector("#batch-tag-input");
+        setupBatchTagInput(tagInput);
+
+        // Close button
+        modal.querySelector(".modal-close").addEventListener("click", () => {
+          document.body.removeChild(modal);
+        });
+
+        // Apply button
+        modal
+          .querySelector("#apply-batch-tags-btn")
+          .addEventListener("click", () => {
+            const mergeTags =
+              document.getElementById("batch-tag-merge").checked;
+            const tagElements = tagInput.querySelectorAll(".tag-item");
+
+            if (tagElements.length === 0) {
+              showNotification("Please add at least one tag", "error");
+              return;
+            }
+
+            // Get tags from UI
+            const tags = Array.from(tagElements).map((el) =>
+              el.textContent.trim().replace(/\s*×\s*$/, "")
+            );
+
+            // Apply tags to all selected patterns
+            appData.selectedPatterns.forEach((patternId) => {
+              const pattern = appData.patterns[patternId];
+              if (!pattern) return;
+
+              if (mergeTags) {
+                // Merge with existing tags (avoid duplicates)
+                const newTags = [...new Set([...pattern.tags, ...tags])];
+                pattern.tags = newTags;
+              } else {
+                // Replace all tags
+                pattern.tags = [...tags];
+              }
+
+              // Update modification date
+              pattern.lastModified = new Date().toISOString().split("T")[0];
+            });
+
+            // Save changes
+            saveDataToLocalStorage();
+
+            // Close modal
+            document.body.removeChild(modal);
+
+            // Clear selection
+            clearSelection();
+
+            // Refresh UI
+            renderPatternGallery();
+            renderSidebarFilters();
+
+            showNotification(
+              `Tags applied to ${appData.selectedPatterns.size} patterns`
+            );
+          });
+      }
+
+      // Setup tag input for batch operations
+      function setupBatchTagInput(tagInput) {
+        const input = tagInput.querySelector("input");
+
+        // Add event listeners for tag input
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            const tag = input.value.trim();
+            if (tag) {
+              addBatchTag(tag, tagInput);
+              input.value = "";
+            }
+          } else if (e.key === "Backspace" && input.value === "") {
+            // Remove the last tag when backspace is pressed in an empty input
+            const tagElements = tagInput.querySelectorAll(".tag-item");
+            if (tagElements.length > 0) {
+              tagInput.removeChild(tagElements[tagElements.length - 1]);
+            }
+          }
+        });
+
+        // Focus the input field
+        input.focus();
+      }
+
+      // Add tag to batch tag input
+      function addBatchTag(tag, tagInput) {
+        // Check if tag already exists
+        const existingTags = Array.from(
+          tagInput.querySelectorAll(".tag-item")
+        ).map((el) =>
+          el.textContent
+            .trim()
+            .replace(/\s*×\s*$/, "")
+            .toLowerCase()
+        );
+
+        if (existingTags.includes(tag.toLowerCase())) return;
+
+        const tagElement = document.createElement("div");
+        tagElement.className = "tag-item";
+        tagElement.innerHTML = `${tag} <span class="tag-remove">×</span>`;
+
+        // Add click event to remove tag
+        tagElement
+          .querySelector(".tag-remove")
+          .addEventListener("click", (e) => {
+            e.stopPropagation();
+            tagInput.removeChild(tagElement);
+          });
+
+        tagInput.insertBefore(tagElement, tagInput.querySelector("input"));
+      }
+
+      // Add selected patterns to an existing set
+      function batchAddToSet() {
+        if (appData.selectedPatterns.size === 0) return;
+
+        // Create modal for set selection
+        const modal = document.createElement("div");
+        modal.className = "modal-backdrop";
+        modal.style.display = "flex";
+
+        // Get available sets
+        const sets = Object.values(appData.sets);
+
+        modal.innerHTML = `
+    <div class="modal">
+      <button class="modal-close">&times;</button>
+      <h2 class="modal-title">Add ${
+        appData.selectedPatterns.size
+      } Patterns to Set</h2>
+      
+      <div class="form-group">
+        <label for="batch-set-select">Select Set</label>
+        <select id="batch-set-select">
+          <option value="">-- Select a Set --</option>
+          ${sets
+            .map((set) => `<option value="${set.id}">${set.name}</option>`)
+            .join("")}
+        </select>
+      </div>
+      
+      ${
+        sets.length === 0 ? "<p>No sets available. Create a set first.</p>" : ""
+      }
+      
+      <button class="btn" id="apply-batch-set-btn" ${
+        sets.length === 0 ? "disabled" : ""
+      }>Add to Set</button>
+    </div>
+  `;
+
+        document.body.appendChild(modal);
+
+        // Close button
+        modal.querySelector(".modal-close").addEventListener("click", () => {
+          document.body.removeChild(modal);
+        });
+
+        // Apply button
+        const applyBtn = modal.querySelector("#apply-batch-set-btn");
+        if (applyBtn && !applyBtn.disabled) {
+          applyBtn.addEventListener("click", () => {
+            const setId = document.getElementById("batch-set-select").value;
+
+            if (!setId) {
+              showNotification("Please select a set", "error");
+              return;
+            }
+
+            const set = appData.sets[setId];
+            if (!set) {
+              showNotification("Selected set not found", "error");
+              return;
+            }
+
+            // Get current max order in set
+            let maxOrder = 0;
+            set.patterns.forEach((patternId) => {
+              if (
+                appData.patterns[patternId] &&
+                appData.patterns[patternId].setOrder > maxOrder
+              ) {
+                maxOrder = appData.patterns[patternId].setOrder;
+              }
+            });
+
+            // Add patterns to set
+            appData.selectedPatterns.forEach((patternId) => {
+              const pattern = appData.patterns[patternId];
+              if (!pattern) return;
+
+              // Skip if already in this set
+              if (pattern.setId === setId) return;
+
+              // Remove from previous set if any
+              if (pattern.setId && appData.sets[pattern.setId]) {
+                appData.sets[pattern.setId].patterns = appData.sets[
+                  pattern.setId
+                ].patterns.filter((id) => id !== patternId);
+              }
+
+              // Add to new set
+              if (!set.patterns.includes(patternId)) {
+                set.patterns.push(patternId);
+
+                // Update pattern
+                pattern.setId = setId;
+                pattern.setName = set.name;
+                pattern.setOrder = ++maxOrder;
+                pattern.lastModified = new Date().toISOString().split("T")[0];
+              }
+            });
+
+            // Save changes
+            saveDataToLocalStorage();
+
+            // Close modal
+            document.body.removeChild(modal);
+
+            // Clear selection
+            clearSelection();
+
+            // Refresh UI
+            renderPatternGallery();
+            renderSidebarFilters();
+
+            showNotification(`Patterns added to set "${set.name}"`);
+          });
+        }
+      }
+
+      // Create a new set with selected patterns
+      function batchCreateSet() {
+        if (appData.selectedPatterns.size === 0) return;
+
+        // Create modal for new set
+        const modal = document.createElement("div");
+        modal.className = "modal-backdrop";
+        modal.style.display = "flex";
+
+        modal.innerHTML = `
+    <div class="modal">
+      <button class="modal-close">&times;</button>
+      <h2 class="modal-title">Create New Set with ${appData.selectedPatterns.size} Patterns</h2>
+      
+      <div class="form-group">
+        <label for="new-set-name">Set Name</label>
+        <input type="text" id="new-set-name" placeholder="Enter set name">
+      </div>
+      
+      <div class="form-group">
+        <label for="new-set-notes">Notes (Optional)</label>
+        <textarea id="new-set-notes" rows="3" placeholder="Enter notes about this set"></textarea>
+      </div>
+      
+      <button class="btn" id="create-new-set-btn">Create Set</button>
+    </div>
+  `;
+
+        document.body.appendChild(modal);
+
+        // Close button
+        modal.querySelector(".modal-close").addEventListener("click", () => {
+          document.body.removeChild(modal);
+        });
+
+        // Create button
+        modal
+          .querySelector("#create-new-set-btn")
+          .addEventListener("click", () => {
+            const setName = document
+              .getElementById("new-set-name")
+              .value.trim();
+
+            if (!setName) {
+              showNotification("Please enter a set name", "error");
+              return;
+            }
+
+            const setNotes = document
+              .getElementById("new-set-notes")
+              .value.trim();
+
+            // Generate ID
+            const setId = "set-" + Date.now();
+
+            // Get selected pattern IDs
+            const patternIds = Array.from(appData.selectedPatterns);
+
+            // Create set
+            appData.sets[setId] = {
+              id: setId,
+              name: setName,
+              patterns: patternIds,
+              notes: setNotes,
+            };
+
+            // Update patterns
+            patternIds.forEach((patternId, index) => {
+              const pattern = appData.patterns[patternId];
+              if (!pattern) return;
+
+              // Remove from previous set if any
+              if (pattern.setId && appData.sets[pattern.setId]) {
+                appData.sets[pattern.setId].patterns = appData.sets[
+                  pattern.setId
+                ].patterns.filter((id) => id !== patternId);
+              }
+
+              // Update pattern
+              pattern.setId = setId;
+              pattern.setName = setName;
+              pattern.setOrder = index + 1;
+              pattern.lastModified = new Date().toISOString().split("T")[0];
+            });
+
+            // Save data
+            saveDataToLocalStorage();
+
+            // Close modal
+            document.body.removeChild(modal);
+
+            // Clear selection
+            clearSelection();
+
+            // Refresh UI
+            renderPatternGallery();
+            renderSidebarFilters();
+
+            showNotification(
+              `Created new set "${setName}" with ${patternIds.length} patterns`
+            );
+          });
+      }
+
+      // Add selection styles
+      function addSelectionStyles() {
+        const style = document.createElement("style");
+        style.id = "selection-styles";
+        style.textContent = `
+          /* Selection mode button */
+          #selection-mode-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+          }
+          .selection-icon {
+            margin-right: 5px;
+          }
+          
+          /* Pattern card selection styles */
+          .pattern-card {
+            position: relative;
+          }
+          .pattern-card.selected {
+            box-shadow: 0 0 0 3px var(--primary-color);
+          }
+          .pattern-select {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+          }
+          .pattern-select input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+          }
+          
+          /* Selection panel */
+          .selection-panel {
+            position: fixed;
+            bottom: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: bottom 0.3s ease;
+            z-index: 100;
+          }
+          .selection-panel.active {
+            bottom: 0;
+          }
+          .selection-count {
+            font-weight: bold;
+            margin-right: 10px;
+          }
+          .selection-actions {
+            display: flex;
+            gap: 10px;
+          }
+          .btn-small {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+          }
+        `;
+
+        document.head.appendChild(style);
       }
 
       // Render sidebar filters
