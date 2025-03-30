@@ -1786,34 +1786,22 @@
         // Create a DataView for easier binary data access
         const view = new DataView(arrayBuffer);
 
-        // Based on the C# reference code, the metadata is stored at specific offsets:
-        // Pattern name: Offset 0x10 (16), Length 40 bytes, UTF-16 encoded
-        // Creator name: Offset 0x58 (88), Length 20 bytes, UTF-16 encoded
-        // Town name: Should be immediately after creator name
-
         try {
           // Extract pattern name (40 bytes at offset 0x10)
           let patternName = extractUTF16String(arrayBuffer, 0x10, 40);
           console.log("Extracted pattern name:", patternName);
 
+          // Town ID (4 bytes at offset 0x38)
+          const townId = view.getUint32(0x38, true).toString();
+          console.log("Extracted town ID:", townId);
+
+          // Extract town name (20 bytes at offset 0x3C)
+          let townName = extractUTF16String(arrayBuffer, 0x3c, 20);
+          console.log("Extracted town name:", townName);
+
           // Extract creator name (20 bytes at offset 0x58)
           let creatorName = extractUTF16String(arrayBuffer, 0x58, 20);
           console.log("Extracted creator name:", creatorName);
-
-          // Town name is typically after creator name
-          // For Animal Crossing: New Horizons, it's at offset 0x6C (108)
-          let townName = extractUTF16String(arrayBuffer, 0x6c, 20);
-          console.log("Extracted town name:", townName);
-
-          // Town ID - assuming it's 2 bytes after town name
-          // This is an approximation; may need adjustment based on actual file format
-          const townIdOffset = 0x6c + 20;
-          let townId = "";
-
-          if (townIdOffset + 4 <= arrayBuffer.byteLength) {
-            townId = view.getUint32(townIdOffset, true).toString();
-            console.log("Extracted town ID:", townId);
-          }
 
           return {
             patternName: patternName || "Unnamed Pattern",
@@ -1833,33 +1821,21 @@
       }
 
       // Helper function to extract UTF-16 strings from binary data
-      function extractUTF16String(arrayBuffer, offset, maxLength) {
-        // Create a Uint8Array view of the array buffer
-        const bytes = new Uint8Array(arrayBuffer, offset, maxLength);
-
-        // Find the terminating null character (two consecutive zeros in UTF-16)
-        let length = 0;
-        for (let i = 0; i < bytes.length - 1; i += 2) {
-          if (bytes[i] === 0 && bytes[i + 1] === 0) {
-            length = i;
-            break;
-          }
-        }
-
-        // If no null terminator found, use the whole buffer
-        if (length === 0) {
-          length = maxLength;
-        }
-
-        // Create a Uint16Array (UTF-16) from the bytes
-        const charCodes = new Uint16Array(
-          arrayBuffer.slice(offset, offset + length)
-        );
-
-        // Convert to a JavaScript string
+      function extractUTF16String(arrayBuffer, offset, maxByteLength) {
+        // Create a DataView for reading UTF-16 values
+        const dataView = new DataView(arrayBuffer);
         let result = "";
-        for (let i = 0; i < charCodes.length; i++) {
-          result += String.fromCharCode(charCodes[i]);
+
+        // UTF-16 uses 2 bytes per character, so read characters until we hit null or maxByteLength
+        for (let i = 0; i < maxByteLength; i += 2) {
+          if (offset + i + 1 >= arrayBuffer.byteLength) break;
+
+          const charCode = dataView.getUint16(offset + i, true); // true for little-endian
+
+          // Stop at the null terminator
+          if (charCode === 0) break;
+
+          result += String.fromCharCode(charCode);
         }
 
         return result.trim();
