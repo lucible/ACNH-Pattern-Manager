@@ -1337,25 +1337,39 @@ CURRENT BUG LIST (address later)
               height: 100%;
               gap: 2px;
             }
-            /* Horizontal grids (e.g., 3x1, 2x1) */
+            /* Base styles for horizontal grids */
             .set-grid-preview.horizontal-grid {
-              height: 33%; /* Takes approximately 1/3 of the thumbnail height */
-              align-self: center;
-              margin: auto 0;
-              /* Add this to make it display horizontally */
-              display: grid;
-              grid-template-columns: repeat(var(--cols, 3), 1fr);
-              grid-template-rows: 1fr;
-            }
-            /* Vertical grids (e.g., 1x2, 1x3) */
-            .set-grid-preview.vertical-grid {
-              width: 33%; /* Takes approximately 1/3 of the thumbnail width */
               align-self: center;
               margin: 0 auto;
-              /* Add this to make it display vertically */
+              display: grid;
+              grid-template-rows: 1fr;
+            }
+            /* Specific styles for 2x1 grids */
+            .set-grid-preview.horizontal-grid[style*="--cols: 2"] {
+              height: 50%; /* Taller height for 2x1 grids */
+              grid-template-columns: repeat(2, 1fr);
+            }
+            /* Specific styles for 3x1 grids */
+            .set-grid-preview.horizontal-grid[style*="--cols: 3"] {
+              height: 33%; /* Original height for 3x1 grids */
+              grid-template-columns: repeat(3, 1fr);
+            }
+            /* Base styles for vertical grids */
+            .set-grid-preview.vertical-grid {
+              align-self: center;
+              margin: 0 auto;
               display: grid;
               grid-template-columns: 1fr;
-              grid-template-rows: repeat(var(--rows, 2), 1fr);
+            }
+            /* Specific styles for 1x2 grids */
+            .set-grid-preview.vertical-grid[style*="--rows: 2"] {
+              width: 50%; /* Wider width for 1x2 grids */
+              grid-template-rows: repeat(2, 1fr);
+            }
+            /* Specific styles for 1x3 grids */
+            .set-grid-preview.vertical-grid[style*="--rows: 3"] {
+              width: 33%; /* Original width for 1x3 grids */
+              grid-template-rows: repeat(3, 1fr);
             }
             /* Square grids (e.g., 2x2, 3x3) */
             .set-grid-preview.square-grid {
@@ -1369,6 +1383,7 @@ CURRENT BUG LIST (address later)
               display: flex;
               align-items: center;
               justify-content: center;
+              aspect-ratio: 1/1;
             }
             .set-grid-item img {
               width: 100%;
