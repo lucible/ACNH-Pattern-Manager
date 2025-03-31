@@ -6,22 +6,62 @@ CURRENT BUG LIST (address later)
 [ ] The 'create set' button should be disabled when selected patterns are from multiple creators.
 [ ] The vertical/horizontal grids are flipped IMO. 3x1 should mean 3 columns, 1 row and right now
       it means the opposite!
+[ ] Fix selected "Select" button CSS
 -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <link
+      rel="preload"
+      href="FOT-Seurat-Pro-B.woff"
+      as="font"
+      type="font/woff"
+      crossorigin
+    />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Animal Crossing Pattern Collection Manager</title>
     <style>
       :root {
-        --primary-color: #78c850;
+        --primary-color: #56acda;
         --secondary-color: #f8f8f8;
         --border-color: #e0e0e0;
         --text-color: #333;
         --accent-color: #f0c030;
         --error-color: #e74c3c;
         --success-color: #2ecc71;
+      }
+
+      @font-face {
+        font-family: "Seurat Pro B";
+        src: url("FOT-SeuratProBRegular.woff2") format("woff2");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Humming";
+        src: url("nintendoP_Humming-E_002prRegular-FontForge.woff2") format("woff2");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Farts";
+        src: url("nintendoP_Humming-E_002pr-Regular-Glyphr.otf") format("opentype");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Farts";
+        src: url("./fontworks/FOT-Seurat-Pro-EB.otf") format("opentype");
+        font-weight: bold;
+        font-style: normal;
+        font-display: swap;
       }
 
       * {
@@ -31,10 +71,11 @@ CURRENT BUG LIST (address later)
       }
 
       body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        font-family: "Seurat Pro B", "Humming", "Segoe UI", Tahoma, Geneva, Verdana,
+          sans-serif;
         line-height: 1.6;
         color: var(--text-color);
-        background-color: #f5f9f5;
+        background-color: #d3efff;
       }
 
       .container {
@@ -143,13 +184,15 @@ CURRENT BUG LIST (address later)
       }
 
       .btn {
-        padding: 8px 16px;
+        padding: 7px 10px;
         background-color: var(--primary-color);
         color: white;
         border: none;
         border-radius: 4px;
         cursor: pointer;
-        transition: background-color 0.2s;
+        transition: color 0.2s, background-color 0.2s;
+        box-shadow: 0 2px 0 0 rgba(0, 0, 0, 0.15);
+        font-size: initial;
       }
 
       .btn:hover {
@@ -176,7 +219,7 @@ CURRENT BUG LIST (address later)
         background-color: white;
         border-radius: 8px;
         overflow: hidden;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 0 0 rgba(0, 0, 0, 0.15);
         transition: transform 0.2s, box-shadow 0.2s;
       }
 
