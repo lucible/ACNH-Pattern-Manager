@@ -101,14 +101,34 @@ CURRENT BUG LIST (address later)
       .action-bar {
         display: flex;
         justify-content: space-between;
+        align-items: center; /* Center align all items */
         margin-bottom: 20px;
+        flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        gap: 10px;
+      }
+
+      /* Properly align the control buttons group */
+      .action-bar > div:last-child {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 0 0 auto; /* Don't grow or shrink */
+      }
+
+      .action-bar input,
+      .action-bar button {
+        height: 40px; /* Consistent height for all elements */
+      }
+
+      .action-bar input {
+        padding: 8px 12px;
       }
 
       .search-bar {
         display: flex;
         gap: 10px;
-        flex: 1;
-        max-width: 500px;
+        flex: 0 1 500px; /* Flex basis instead of max-width, won't grow beyond 500px */
+        min-width: 250px; /* Ensure minimum width on small screens */
       }
 
       .search-bar input {
@@ -439,13 +459,15 @@ CURRENT BUG LIST (address later)
 
       .notification {
         position: fixed;
-        bottom: 20px;
+        top: 20px; /* Changed from bottom to top */
         right: 20px;
         background-color: white;
         border-radius: 8px;
         padding: 15px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        transform: translateY(100px);
+        transform: translateY(
+          -100px
+        ); /* Changed direction for slide-in from top */
         opacity: 0;
         transition: transform 0.3s, opacity 0.3s;
         z-index: 1001;
@@ -491,6 +513,21 @@ CURRENT BUG LIST (address later)
         .pattern-image {
           flex: none;
           max-width: 100%;
+        }
+
+        .action-bar {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .search-bar {
+          flex: 1 1 100%; /* Take full width on mobile */
+          max-width: none;
+        }
+
+        .active-filters-container {
+          order: 2; /* Move filters below search */
+          margin-top: 10px;
         }
       }
     </style>
@@ -722,6 +759,7 @@ CURRENT BUG LIST (address later)
           creators: new Set(),
           sets: new Set(),
           search: "",
+          untagged: false,
         },
         selectionMode: false,
         selectedPatterns: new Set(),
@@ -770,6 +808,7 @@ CURRENT BUG LIST (address later)
         setupMultiSelectUI();
         renderSidebarFilters();
         enhanceFiltering();
+        addBackToTopButton();
       }
 
       // Load data from localStorage
@@ -899,6 +938,65 @@ CURRENT BUG LIST (address later)
         );
       }
 
+      function addBackToTopButton() {
+        // Create the button
+        const backToTopBtn = document.createElement("button");
+        backToTopBtn.id = "back-to-top-btn";
+        backToTopBtn.innerHTML = "↑";
+        backToTopBtn.title = "Back to Top";
+        backToTopBtn.setAttribute("aria-label", "Back to Top");
+        document.body.appendChild(backToTopBtn);
+
+        // Add styles
+        const style = document.createElement("style");
+        style.textContent = `
+          #back-to-top-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 24px;
+            border: none;
+            cursor: pointer;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            z-index: 99;
+            transition: background-color 0.2s, transform 0.2s;
+          }
+          #back-to-top-btn:hover {
+            background-color: #6ab043;
+            transform: translateY(-3px);
+          }
+          #back-to-top-btn.visible {
+            display: flex;
+          }
+        `;
+        document.head.appendChild(style);
+
+        // Add scroll event listener to show/hide button
+        window.addEventListener("scroll", () => {
+          if (window.scrollY > 300) {
+            backToTopBtn.classList.add("visible");
+          } else {
+            backToTopBtn.classList.remove("visible");
+          }
+        });
+
+        // Add click event to scroll to top
+        backToTopBtn.addEventListener("click", () => {
+          window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+          });
+        });
+      }
+
       function addActiveFilterStyles() {
         const existingStyle = document.getElementById("active-filters-style");
         if (existingStyle) return;
@@ -911,15 +1009,21 @@ CURRENT BUG LIST (address later)
             flex-wrap: wrap;
             align-items: center;
             gap: 10px;
-            margin: 10px 0 15px;
-            padding: 10px;
+            margin: 0;
+            padding: 0;
             background-color: var(--secondary-color);
             border-radius: 5px;
+            flex: 2; /* Take available space */
+            min-width: 200px; /* Ensure doesn't get too small */
+            min-height: 40px;
           }
           
           .active-filters-title {
             font-weight: bold;
-            margin-right: 5px;
+            margin: 0; /* Remove any margin */
+            display: flex;
+            align-items: center;
+            height: 100%;
           }
           
           .active-filters-list {
@@ -927,6 +1031,7 @@ CURRENT BUG LIST (address later)
             flex-wrap: wrap;
             gap: 8px;
             flex: 1;
+            align-items: center;
           }
           
           .active-filter {
@@ -935,7 +1040,9 @@ CURRENT BUG LIST (address later)
             border-radius: 15px;
             padding: 4px 10px;
             font-size: 0.9rem;
-            display: inline-flex;
+            margin: 2px 0; /* Add minimal vertical margin */
+            height: 28px; /* Specific height for filter tags */
+            display: flex;
             align-items: center;
           }
           
@@ -1107,6 +1214,11 @@ CURRENT BUG LIST (address later)
             return false;
           }
 
+          // Untagged filter - only apply if untagged filter is active
+          if (appData.activeFilters.untagged) {
+            return pattern.tags.length === 0;
+          }
+
           // Tag filters - only apply if tags filter is active
           if (appData.activeFilters.tags.size > 0) {
             const hasMatchingTag = pattern.tags.some((tag) =>
@@ -1181,7 +1293,8 @@ CURRENT BUG LIST (address later)
           .getElementById("add-to-set-btn")
           .addEventListener("click", () => batchAddToSet());
         document
-          .getElementById("create-set-btn")
+          .getElementById("selection-panel")
+          .querySelector("#create-set-btn")
           .addEventListener("click", () => batchCreateSet());
         document
           .getElementById("clear-selection-btn")
@@ -1365,28 +1478,28 @@ CURRENT BUG LIST (address later)
         modal.style.display = "flex";
 
         modal.innerHTML = `
-    <div class="modal">
-      <button class="modal-close">&times;</button>
-      <h2 class="modal-title">Add Tags to ${appData.selectedPatterns.size} Patterns</h2>
-      
-      <div class="form-group">
-        <label>Enter Tags</label>
-        <div class="tag-input" id="batch-tag-input">
-          <input type="text" placeholder="Add a tag...">
-        </div>
-        <p class="help-text">Enter each tag and press Enter or comma to add</p>
-      </div>
-      
-      <div class="form-group">
-        <label>
-          <input type="checkbox" id="batch-tag-merge" checked>
-          Merge with existing tags (uncheck to replace all tags)
-        </label>
-      </div>
-      
-      <button class="btn" id="apply-batch-tags-btn">Apply Tags</button>
-    </div>
-  `;
+          <div class="modal">
+            <button class="modal-close">&times;</button>
+            <h2 class="modal-title">Add Tags to ${appData.selectedPatterns.size} Patterns</h2>
+            
+            <div class="form-group">
+              <label>Enter Tags</label>
+              <div class="tag-input" id="batch-tag-input">
+                <input type="text" placeholder="Add a tag...">
+              </div>
+              <p class="help-text">Enter each tag and press Enter or comma to add</p>
+            </div>
+            
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="batch-tag-merge" checked>
+                Merge with existing tags (uncheck to replace all tags)
+              </label>
+            </div>
+            
+            <button class="btn" id="apply-batch-tags-btn">Apply Tags</button>
+          </div>
+        `;
 
         document.body.appendChild(modal);
 
@@ -1438,6 +1551,9 @@ CURRENT BUG LIST (address later)
             // Save changes
             saveDataToLocalStorage();
 
+            // Store the count before clearing
+            const patternCount = appData.selectedPatterns.size;
+
             // Close modal
             document.body.removeChild(modal);
 
@@ -1448,9 +1564,7 @@ CURRENT BUG LIST (address later)
             renderPatternGallery();
             renderSidebarFilters();
 
-            showNotification(
-              `Tags applied to ${appData.selectedPatterns.size} patterns`
-            );
+            showNotification(`Tags applied to ${patternCount} patterns`);
           });
       }
 
@@ -1812,24 +1926,46 @@ CURRENT BUG LIST (address later)
           });
         });
 
-        const tagFiltersHTML = Array.from(allTags.entries())
-          .sort((a, b) => b[1] - a[1])
-          .map(([tag, count]) => {
-            const isActive = appData.activeFilters.tags.has(tag);
-            return `
-        <li class="${isActive ? "active" : ""}" data-tag="${tag}">
-          ${tag} 
-          <span class="filter-count">${count}</span>
-          ${isActive ? '<span class="filter-remove">×</span>' : ""}
-        </li>`;
-          })
-          .join("");
+        // Count untagged patterns
+        const untaggedCount = Object.values(appData.patterns).filter(
+          (pattern) => pattern.tags.length === 0
+        ).length;
+
+        // Create the untagged filter HTML
+        const untaggedFilterHTML = `
+          <li class="${
+            appData.activeFilters.untagged ? "active" : ""
+          }" data-filter="untagged">
+            Untagged 
+            <span class="filter-count">${untaggedCount}</span>
+            ${
+              appData.activeFilters.untagged
+                ? '<span class="filter-remove">×</span>'
+                : ""
+            }
+          </li>`;
+
+        // Create tag filters HTML with untagged option first
+        const tagFiltersHTML =
+          untaggedFilterHTML +
+          Array.from(allTags.entries())
+            .sort((a, b) => b[1] - a[1])
+            .map(([tag, count]) => {
+              const isActive = appData.activeFilters.tags.has(tag);
+              return `
+              <li class="${isActive ? "active" : ""}" data-tag="${tag}">
+                ${tag} 
+                <span class="filter-count">${count}</span>
+                ${isActive ? '<span class="filter-remove">×</span>' : ""}
+              </li>`;
+            })
+            .join("");
 
         elements.tagFilters.innerHTML =
           tagFiltersHTML || "<li>No tags available</li>";
 
         // Setup tag filter click events
-        elements.tagFilters.querySelectorAll("li").forEach((li) => {
+        elements.tagFilters.querySelectorAll("li[data-tag]").forEach((li) => {
           li.addEventListener("click", (e) => {
             const tag = li.getAttribute("data-tag");
             if (!tag) return;
@@ -1869,12 +2005,51 @@ CURRENT BUG LIST (address later)
                   li.classList.add("active");
                 }
               }
+
+              // Turn off untagged filter when selecting a tag
+              appData.activeFilters.untagged = false;
+              elements.tagFilters
+                .querySelector("li[data-filter='untagged']")
+                ?.classList.remove("active");
             }
 
             renderPatternGallery();
             updateActiveFilterDisplay();
           });
         });
+
+        // Setup untagged filter click event
+        const untaggedFilter = elements.tagFilters.querySelector(
+          "li[data-filter='untagged']"
+        );
+        if (untaggedFilter) {
+          untaggedFilter.addEventListener("click", (e) => {
+            // Check if click was on the remove button
+            if (e.target.classList.contains("filter-remove")) {
+              appData.activeFilters.untagged = false;
+              untaggedFilter.classList.remove("active");
+            } else {
+              // Toggle the untagged filter
+              appData.activeFilters.untagged = !appData.activeFilters.untagged;
+
+              if (appData.activeFilters.untagged) {
+                untaggedFilter.classList.add("active");
+                // Clear tag filters when untagged is selected
+                appData.activeFilters.tags.clear();
+                elements.tagFilters
+                  .querySelectorAll("li[data-tag]")
+                  .forEach((item) => {
+                    item.classList.remove("active");
+                  });
+              } else {
+                untaggedFilter.classList.remove("active");
+              }
+            }
+
+            renderPatternGallery();
+            updateActiveFilterDisplay();
+          });
+        }
 
         // Similar implementation for creators and sets filters with the same pattern
         renderCreatorFilters();
@@ -2050,10 +2225,19 @@ CURRENT BUG LIST (address later)
           activeFiltersContainer.className = "active-filters-container";
 
           // Insert it after the search bar
-          const searchBar = document.querySelector(".search-bar");
-          searchBar.parentNode.insertBefore(
-            activeFiltersContainer,
-            searchBar.nextSibling
+          const actionBar = document.querySelector(".action-bar");
+          const searchBarDiv =
+            actionBar.querySelector(".search-bar").parentNode;
+
+          // Create a wrapper div to contain filters and maintain layout
+          const filterWrapperDiv = document.createElement("div");
+          filterWrapperDiv.className = "filter-wrapper";
+          filterWrapperDiv.appendChild(activeFiltersContainer);
+
+          // Insert in the middle of the action bar (after search, before controls)
+          actionBar.insertBefore(
+            filterWrapperDiv,
+            actionBar.querySelector("div:last-child")
           );
         }
 
@@ -2062,6 +2246,7 @@ CURRENT BUG LIST (address later)
           appData.activeFilters.tags.size > 0 ||
           appData.activeFilters.creators.size > 0 ||
           appData.activeFilters.sets.size > 0 ||
+          appData.activeFilters.untagged ||
           appData.activeFilters.search;
 
         // Clear the container
@@ -2092,6 +2277,14 @@ CURRENT BUG LIST (address later)
           searchFilter.className = "active-filter search-filter";
           searchFilter.innerHTML = `Search: "${appData.activeFilters.search}" <span class="filter-remove" data-type="search">×</span>`;
           filtersList.appendChild(searchFilter);
+        }
+
+        // Add untagged filter if active
+        if (appData.activeFilters.untagged) {
+          const untaggedFilter = document.createElement("span");
+          untaggedFilter.className = "active-filter tag-filter";
+          untaggedFilter.innerHTML = `Untagged <span class="filter-remove" data-type="untagged">×</span>`;
+          filtersList.appendChild(untaggedFilter);
         }
 
         // Add tag filters
@@ -2143,6 +2336,8 @@ CURRENT BUG LIST (address later)
                 appData.activeFilters.creators.delete(value);
               } else if (type === "set") {
                 appData.activeFilters.sets.delete(value);
+              } else if (type === "untagged") {
+                appData.activeFilters.untagged = false;
               }
 
               renderPatternGallery();
@@ -2156,6 +2351,7 @@ CURRENT BUG LIST (address later)
           appData.activeFilters.creators.clear();
           appData.activeFilters.sets.clear();
           appData.activeFilters.search = "";
+          appData.activeFilters.untagged = false;
           document.getElementById("pattern-search").value = "";
 
           renderPatternGallery();
