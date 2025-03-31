@@ -2,6 +2,9 @@
 CURRENT BUG LIST (address later)
 - When reverting back to Base64 encoded thumbnails from dynamic loading,
   thumbnails do not properly generate (all patterns show "No Thumbnail").
+- Sets should not be selectable in the pattern view multi-select UI.
+- The 'create set' button should be disabled when selected patterns are from multiple creators.
+- Move 4x4 grid option below 2x2 and 3x3 options.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -273,6 +276,7 @@ CURRENT BUG LIST (address later)
 
       .sidebar {
         width: 250px;
+        height: fit-content;
         background-color: white;
         border-radius: 8px;
         padding: 15px;
@@ -715,6 +719,23 @@ CURRENT BUG LIST (address later)
           <input type="text" id="set-name" />
         </div>
         <div class="form-group">
+          <label for="set-grid-size">Grid Size (Optional)</label>
+          <select id="set-grid-size">
+            <option value="">No Grid (Collection of Patterns)</option>
+            <option value="2x2">2 × 2 Grid</option>
+            <option value="3x3">3 × 3 Grid</option>
+            <option value="4x4">4 × 4 Grid</option>
+            <option value="2x1">2 × 1 Grid (Horizontal)</option>
+            <option value="1x2">1 × 2 Grid (Vertical)</option>
+            <option value="3x1">3 × 1 Grid (Horizontal)</option>
+            <option value="1x3">1 × 3 Grid (Vertical)</option>
+          </select>
+          <p class="help-text">
+            Select a grid size if this set forms a larger image when combined,
+            or leave as "No Grid" if it's just a collection.
+          </p>
+        </div>
+        <div class="form-group">
           <label for="set-notes">Notes</label>
           <textarea id="set-notes" rows="3"></textarea>
         </div>
@@ -1130,12 +1151,103 @@ CURRENT BUG LIST (address later)
         const gallery = elements.patternGallery;
         gallery.innerHTML = "";
 
-        const filteredPatterns = filterPatterns(
-          Object.values(appData.patterns)
+        // Track which patterns are in sets to avoid duplicates
+        const patternsInRenderedSets = new Set();
+
+        // First, filter and render sets
+        const visibleSets = Object.values(appData.sets).filter((set) => {
+          // Skip empty sets
+          if (!set.patterns || set.patterns.length === 0) return false;
+
+          // For sets with a creator filter, check if any pattern in the set matches
+          if (appData.activeFilters.creators.size > 0) {
+            // Get the first pattern to check its creator
+            const firstPatternId = set.patterns[0];
+            const pattern = appData.patterns[firstPatternId];
+            if (!pattern) return false;
+
+            if (
+              !appData.activeFilters.creators.has(
+                pattern.creatorName.toLowerCase()
+              )
+            ) {
+              return false;
+            }
+          }
+
+          // For sets with a set filter, check if this set matches
+          if (appData.activeFilters.sets.size > 0) {
+            if (!appData.activeFilters.sets.has(set.name.toLowerCase())) {
+              return false;
+            }
+          }
+
+          // For tag filters, check if any pattern in the set has the tag
+          if (appData.activeFilters.tags.size > 0) {
+            // Check if any pattern in the set has all the required tags
+            const hasAllTags = set.patterns.some((patternId) => {
+              const pattern = appData.patterns[patternId];
+              if (!pattern) return false;
+
+              return Array.from(appData.activeFilters.tags).every((tag) =>
+                pattern.tags.some(
+                  (patternTag) => patternTag.toLowerCase() === tag
+                )
+              );
+            });
+
+            if (!hasAllTags) return false;
+          }
+
+          // For search filter, check if set name or any pattern in the set matches
+          if (appData.activeFilters.search) {
+            const searchTerm = appData.activeFilters.search.toLowerCase();
+
+            // Check set name
+            if (set.name.toLowerCase().includes(searchTerm)) return true;
+
+            // Check pattern names
+            const hasMatchingPattern = set.patterns.some((patternId) => {
+              const pattern = appData.patterns[patternId];
+              if (!pattern) return false;
+
+              return (
+                pattern.patternName.toLowerCase().includes(searchTerm) ||
+                pattern.creatorName.toLowerCase().includes(searchTerm)
+              );
+            });
+
+            if (!hasMatchingPattern) return false;
+          }
+
+          return true;
+        });
+
+        // Render each set as a card
+        visibleSets.forEach((set) => {
+          const setCard = createSetCard(set);
+          if (setCard) {
+            gallery.appendChild(setCard);
+
+            // Track patterns in this set to avoid duplicates
+            set.patterns.forEach((patternId) => {
+              patternsInRenderedSets.add(patternId);
+            });
+          }
+        });
+
+        // Then render individual patterns not in sets
+        const patterns = Object.values(appData.patterns).filter(
+          (pattern) =>
+            // Skip patterns that are already shown in a set
+            !patternsInRenderedSets.has(pattern.id)
         );
 
-        // Check if we have any patterns at all
-        const hasAnyPatterns = Object.keys(appData.patterns).length > 0;
+        const filteredPatterns = filterPatterns(patterns);
+
+        // Check if we have any patterns at all (including sets)
+        const hasAnyPatterns =
+          visibleSets.length > 0 || Object.keys(appData.patterns).length > 0;
 
         // Check if any filters are active
         const hasActiveFilters =
@@ -1144,7 +1256,7 @@ CURRENT BUG LIST (address later)
           appData.activeFilters.sets.size > 0 ||
           appData.activeFilters.search;
 
-        if (filteredPatterns.length === 0) {
+        if (filteredPatterns.length === 0 && visibleSets.length === 0) {
           // Different message based on whether there are any patterns or active filters
           if (!hasAnyPatterns) {
             gallery.innerHTML =
@@ -1192,10 +1304,86 @@ CURRENT BUG LIST (address later)
           return;
         }
 
+        // Render individual patterns
         filteredPatterns.forEach((pattern) => {
           const card = createPatternCard(pattern);
           gallery.appendChild(card);
         });
+
+        // Add styles for set cards if they don't exist
+        if (!document.getElementById("set-card-styles")) {
+          const style = document.createElement("style");
+          style.id = "set-card-styles";
+          style.textContent = `
+            .set-card {
+              position: relative;
+            }
+            .set-thumbnail {
+              position: relative;
+              width: 100%;
+              height: 200px;
+              background-color: #f8f8f8;
+              border-bottom: 1px solid var(--border-color);
+              overflow: hidden;
+            }
+            .set-grid-preview {
+              display: grid;
+              width: 100%;
+              height: 100%;
+              gap: 2px;
+            }
+            .set-grid-item {
+              overflow: hidden;
+              height: min-content;
+              width: min-content;
+            }
+            .set-grid-item.empty {
+              background-color: var(--secondary-color);
+            }
+            .set-collection-preview {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              grid-template-rows: repeat(2, 1fr);
+              gap: 2px;
+              width: 100%;
+              height: 100%;
+            }
+            .set-collection-item {
+              overflow: hidden;
+              background-color: white;
+            }
+            .set-collection-item.more {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background-color: var(--secondary-color);
+            }
+            .more-patterns {
+              font-weight: bold;
+              color: var(--primary-color);
+            }
+            .set-badge {
+              display: inline-block;
+              background-color: var(--primary-color);
+              color: white;
+              font-size: 0.7rem;
+              padding: 1px 6px;
+              border-radius: 10px;
+              margin-left: 5px;
+              vertical-align: middle;
+            }
+            .set-count {
+              font-size: 0.85rem;
+              color: #666;
+              margin-top: 5px;
+            }
+            .set-grid-size {
+              font-size: 0.85rem;
+              color: #666;
+            }
+          `;
+          document.head.appendChild(style);
+        }
       }
 
       // Filter patterns based on active filters
@@ -1752,25 +1940,55 @@ CURRENT BUG LIST (address later)
         modal.style.display = "flex";
 
         modal.innerHTML = `
-    <div class="modal">
-      <button class="modal-close">&times;</button>
-      <h2 class="modal-title">Create New Set with ${appData.selectedPatterns.size} Patterns</h2>
-      
-      <div class="form-group">
-        <label for="new-set-name">Set Name</label>
-        <input type="text" id="new-set-name" placeholder="Enter set name">
-      </div>
-      
-      <div class="form-group">
-        <label for="new-set-notes">Notes (Optional)</label>
-        <textarea id="new-set-notes" rows="3" placeholder="Enter notes about this set"></textarea>
-      </div>
-      
-      <button class="btn" id="create-new-set-btn">Create Set</button>
-    </div>
-  `;
+          <div class="modal">
+            <button class="modal-close">&times;</button>
+            <h2 class="modal-title">Create New Set with ${appData.selectedPatterns.size} Patterns</h2>
+            
+            <div class="form-group">
+              <label for="new-set-name">Set Name</label>
+              <input type="text" id="new-set-name" placeholder="Enter set name">
+            </div>
+            
+            <div class="form-group">
+              <label for="new-set-grid-size">Grid Size (Optional)</label>
+              <select id="new-set-grid-size">
+                <option value="">No Grid (Collection of Patterns)</option>
+                <option value="2x2">2 × 2 Grid</option>
+                <option value="3x3">3 × 3 Grid</option>
+                <option value="4x4">4 × 4 Grid</option>
+                <option value="2x1">2 × 1 Grid (Horizontal)</option>
+                <option value="1x2">1 × 2 Grid (Vertical)</option>
+                <option value="3x1">3 × 1 Grid (Horizontal)</option>
+                <option value="1x3">1 × 3 Grid (Vertical)</option>
+              </select>
+              <p class="help-text">Select a grid size if this set forms a larger image when combined.</p>
+            </div>
+            
+            <div class="form-group">
+              <label for="new-set-notes">Notes (Optional)</label>
+              <textarea id="new-set-notes" rows="3" placeholder="Enter notes about this set"></textarea>
+            </div>
+            
+            <div id="set-creator-warning" class="warning-message" style="display: none;">
+              Warning: The selected patterns are from different creators. Sets must contain patterns from the same creator.
+            </div>
+            
+            <button class="btn" id="create-new-set-btn">Create Set</button>
+          </div>
+        `;
 
         document.body.appendChild(modal);
+
+        // Validate creators
+        const selectedPatternIds = Array.from(appData.selectedPatterns);
+        const isSameCreator = validateSetCreator(selectedPatternIds);
+
+        // Show warning if patterns are from different creators
+        if (!isSameCreator) {
+          const warningElem = modal.querySelector("#set-creator-warning");
+          warningElem.style.display = "block";
+          modal.querySelector("#create-new-set-btn").disabled = true;
+        }
 
         // Close button
         modal.querySelector(".modal-close").addEventListener("click", () => {
@@ -1790,9 +2008,19 @@ CURRENT BUG LIST (address later)
               return;
             }
 
+            // Check creator validation again
+            if (!isSameCreator) {
+              showNotification(
+                "Cannot create a set with patterns from different creators",
+                "error"
+              );
+              return;
+            }
+
             const setNotes = document
               .getElementById("new-set-notes")
               .value.trim();
+            const gridSize = document.getElementById("new-set-grid-size").value;
 
             // Generate ID
             const setId = "set-" + Date.now();
@@ -1806,6 +2034,7 @@ CURRENT BUG LIST (address later)
               name: setName,
               patterns: patternIds,
               notes: setNotes,
+              gridSize: gridSize || null, // Store null if no grid size selected
             };
 
             // Update patterns
@@ -2713,6 +2942,10 @@ CURRENT BUG LIST (address later)
 
         const setNotes = document.getElementById("set-notes").value.trim();
 
+        // Get grid size selection
+        const gridSizeSelect = document.getElementById("set-grid-size");
+        const gridSize = gridSizeSelect.value; // Will be empty string for collection sets
+
         // Generate ID
         const setId = "set-" + Date.now();
 
@@ -2722,6 +2955,7 @@ CURRENT BUG LIST (address later)
           name: setName,
           patterns: [],
           notes: setNotes,
+          gridSize: gridSize || null, // Store null if no grid size selected
         };
 
         // Save data
@@ -2730,6 +2964,7 @@ CURRENT BUG LIST (address later)
         // Close modal and clear inputs
         document.getElementById("set-name").value = "";
         document.getElementById("set-notes").value = "";
+        document.getElementById("set-grid-size").value = "";
         elements.setModal.style.display = "none";
 
         // Refresh views
@@ -2919,16 +3154,52 @@ CURRENT BUG LIST (address later)
         editModal.querySelector("#set-name").value = set.name;
         editModal.querySelector("#set-notes").value = set.notes || "";
 
+        // Find or create grid size select
+        let gridSizeSelect = editModal.querySelector("#set-grid-size");
+        if (!gridSizeSelect) {
+          // If the set modal hasn't been updated yet, add the grid size field
+          const notesFormGroup = editModal
+            .querySelector('label[for="set-notes"]')
+            .closest(".form-group");
+
+          const gridSizeFormGroup = document.createElement("div");
+          gridSizeFormGroup.className = "form-group";
+          gridSizeFormGroup.innerHTML = `
+            <label for="set-grid-size">Grid Size (Optional)</label>
+            <select id="set-grid-size">
+              <option value="">No Grid (Collection of Patterns)</option>
+              <option value="2x2">2 × 2 Grid</option>
+              <option value="3x3">3 × 3 Grid</option>
+              <option value="4x4">4 × 4 Grid</option>
+              <option value="2x1">2 × 1 Grid (Horizontal)</option>
+              <option value="1x2">1 × 2 Grid (Vertical)</option>
+              <option value="3x1">3 × 1 Grid (Horizontal)</option>
+              <option value="1x3">1 × 3 Grid (Vertical)</option>
+            </select>
+            <p class="help-text">Select a grid size if this set forms a larger image when combined, or leave as "No Grid" if it's just a collection.</p>
+          `;
+
+          notesFormGroup.after(gridSizeFormGroup);
+          gridSizeSelect = editModal.querySelector("#set-grid-size");
+        }
+
+        // Set grid size value
+        if (set.gridSize) {
+          gridSizeSelect.value = set.gridSize;
+        } else {
+          gridSizeSelect.value = "";
+        }
+
         // Add pattern management section
         const formGroup = document.createElement("div");
         formGroup.className = "form-group";
         formGroup.innerHTML = `
-        <label>Patterns</label>
-        <div class="set-patterns-container">
-            <div class="set-patterns" id="edit-set-patterns"></div>
-        </div>
-        <p class="help-text">Drag to reorder. Click to remove.</p>
-    `;
+    <label>Patterns</label>
+    <div class="set-patterns-container">
+      <div class="set-patterns" id="edit-set-patterns"></div>
+    </div>
+    <p class="help-text">Drag to reorder. Click to remove.</p>
+  `;
 
         // Insert before save button
         const saveBtn = editModal.querySelector("#save-set-btn");
@@ -2974,68 +3245,68 @@ CURRENT BUG LIST (address later)
         // Setup style for pattern items
         const style = document.createElement("style");
         style.textContent = `
-        .set-pattern-item {
-            display: flex;
-            align-items: center;
-            background: white;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            margin-bottom: 8px;
-            padding: 5px;
-            position: relative;
-        }
-        .set-pattern-item img {
-            width: 64px;
-            height: 64px;
-            margin-right: 10px;
-            border: 1px solid var(--border-color);
-        }
-        .pattern-order {
-            position: absolute;
-            top: 5px;
-            left: 5px;
-            background: var(--primary-color);
-            color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-        }
-        .remove-pattern {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            width: 24px;
-            height: 24px;
-            background: rgba(255,255,255,0.8);
-            border: 1px solid var(--border-color);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 16px;
-            line-height: 1;
-        }
-        .set-pattern-item.dragging {
-            opacity: 0.5;
-        }
-        .set-patterns-container {
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 10px;
-            background: var(--secondary-color);
-            min-height: 100px;
-        }
-        .help-text {
-            font-size: 0.8rem;
-            color: #666;
-            margin-top: 5px;
-        }
-    `;
+            .set-pattern-item {
+                display: flex;
+                align-items: center;
+                background: white;
+                border: 1px solid var(--border-color);
+                border-radius: 4px;
+                margin-bottom: 8px;
+                padding: 5px;
+                position: relative;
+            }
+            .set-pattern-item img {
+                width: 64px;
+                height: 64px;
+                margin-right: 10px;
+                border: 1px solid var(--border-color);
+            }
+            .pattern-order {
+                position: absolute;
+                top: 5px;
+                left: 5px;
+                background: var(--primary-color);
+                color: white;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 12px;
+            }
+            .remove-pattern {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                width: 24px;
+                height: 24px;
+                background: rgba(255,255,255,0.8);
+                border: 1px solid var(--border-color);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                font-size: 16px;
+                line-height: 1;
+            }
+            .set-pattern-item.dragging {
+                opacity: 0.5;
+            }
+            .set-patterns-container {
+                border: 1px solid var(--border-color);
+                border-radius: 4px;
+                padding: 10px;
+                background: var(--secondary-color);
+                min-height: 100px;
+            }
+            .help-text {
+                font-size: 0.8rem;
+                color: #666;
+                margin-top: 5px;
+            }
+        `;
         editModal.appendChild(style);
 
         // Setup drag and drop for pattern ordering
@@ -3067,12 +3338,25 @@ CURRENT BUG LIST (address later)
           set.name = editModal.querySelector("#set-name").value.trim();
           set.notes = editModal.querySelector("#set-notes").value.trim();
 
+          // Update grid size
+          const gridSizeSelect = editModal.querySelector("#set-grid-size");
+          set.gridSize = gridSizeSelect.value || null;
+
           // Get pattern order from UI
           const patternItems =
             patternsContainer.querySelectorAll(".set-pattern-item");
           const patternIds = Array.from(patternItems).map((item) =>
             item.getAttribute("data-id")
           );
+
+          // Validate that all patterns are from the same creator
+          if (!validateSetCreator(patternIds)) {
+            showNotification(
+              "Cannot save set with patterns from different creators",
+              "error"
+            );
+            return;
+          }
 
           // Update set patterns
           set.patterns = patternIds;
@@ -3199,26 +3483,56 @@ CURRENT BUG LIST (address later)
         const set = appData.sets[setId];
         if (!set) return;
 
+        // Get creator info from existing patterns in the set
+        let creatorName = null;
+        let creatorTown = null;
+
+        if (set.patterns.length > 0) {
+          const firstPattern = appData.patterns[set.patterns[0]];
+          if (firstPattern) {
+            creatorName = firstPattern.creatorName;
+            creatorTown = firstPattern.townName;
+          }
+        }
+
         // Create modal for pattern selection
         const modal = document.createElement("div");
         modal.className = "modal-backdrop";
         modal.style.display = "flex";
 
         modal.innerHTML = `
-        <div class="modal">
+          <div class="modal">
             <button class="modal-close">&times;</button>
             <h2 class="modal-title">Add Patterns to "${set.name}"</h2>
+            ${
+              creatorName
+                ? `<div class="creator-filter-info">Only showing patterns by ${creatorName} of ${creatorTown}</div>`
+                : ""
+            }
             <div class="form-group">
-                <input type="text" id="pattern-search-input" placeholder="Search patterns...">
+              <input type="text" id="pattern-search-input" placeholder="Search patterns...">
             </div>
             <div class="pattern-selection">
-                <!-- Patterns will be loaded here -->
+              <!-- Patterns will be loaded here -->
             </div>
             <button class="btn" id="add-selected-patterns">Add Selected Patterns</button>
-        </div>
-    `;
+          </div>
+        `;
 
         document.body.appendChild(modal);
+
+        // Add styles for creator filter info
+        const creatorInfoStyle = document.createElement("style");
+        creatorInfoStyle.textContent = `
+          .creator-filter-info {
+            background-color: var(--secondary-color);
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+          }
+        `;
+        document.head.appendChild(creatorInfoStyle);
 
         // Style for pattern selection
         const style = document.createElement("style");
@@ -3284,11 +3598,20 @@ CURRENT BUG LIST (address later)
         // Close button
         modal.querySelector(".modal-close").addEventListener("click", () => {
           document.body.removeChild(modal);
+          document.body.removeChild(creatorInfoStyle);
           document.body.removeChild(style);
         });
 
         // Get all patterns
-        const patterns = Object.values(appData.patterns);
+        let patterns = Object.values(appData.patterns);
+
+        // Filter by creator if set already has patterns
+        if (creatorName) {
+          patterns = patterns.filter(
+            (pattern) =>
+              pattern.creatorName.toLowerCase() === creatorName.toLowerCase()
+          );
+        }
 
         // Already included pattern IDs
         const existingPatternIds = set.patterns;
@@ -3363,15 +3686,15 @@ CURRENT BUG LIST (address later)
             patternElement.setAttribute("draggable", "true");
 
             patternElement.innerHTML = `
-                <img src="${
-                  pattern.thumbnailPath ||
-                  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
-                }" 
-                    class="set-pattern pixel-art-image" 
-                    title="${pattern.patternName}">
-                <div class="pattern-order">${nextOrder + index}</div>
-                <div class="pattern-name">${pattern.patternName}</div>
-                <button class="remove-pattern" title="Remove from set">×</button>
+              <img src="${
+                pattern.thumbnailPath ||
+                "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
+              }" 
+                  class="set-pattern pixel-art-image" 
+                  title="${pattern.patternName}">
+              <div class="pattern-order">${nextOrder + index}</div>
+              <div class="pattern-name">${pattern.patternName}</div>
+              <button class="remove-pattern" title="Remove from set">×</button>
             `;
 
             patternsContainer.appendChild(patternElement);
@@ -3396,6 +3719,7 @@ CURRENT BUG LIST (address later)
 
           // Close the modal
           document.body.removeChild(modal);
+          document.body.removeChild(creatorInfoStyle);
           document.body.removeChild(style);
 
           showNotification(`Added ${selectedItems.length} patterns to the set`);
@@ -3476,6 +3800,400 @@ CURRENT BUG LIST (address later)
 
           showNotification("Set deleted successfully");
         }
+      }
+
+      // Function to validate that all patterns in a set are from the same creator
+      function validateSetCreator(patternIds) {
+        if (!patternIds || patternIds.length === 0) return true;
+
+        const creatorNames = new Set();
+
+        patternIds.forEach((id) => {
+          const pattern = appData.patterns[id];
+          if (pattern) {
+            creatorNames.add(pattern.creatorName.toLowerCase());
+          }
+        });
+
+        // Return true if all patterns have the same creator (only one entry in the Set)
+        return creatorNames.size === 1;
+      }
+
+      // Function to get creator info for a set
+      function getSetCreatorInfo(patternIds) {
+        if (!patternIds || patternIds.length === 0)
+          return { name: "Unknown", town: "Unknown" };
+
+        const pattern = appData.patterns[patternIds[0]];
+        if (!pattern) return { name: "Unknown", town: "Unknown" };
+
+        return {
+          name: pattern.creatorName,
+          town: pattern.townName,
+        };
+      }
+
+      // Function to render a set card (for pattern gallery view)
+      function createSetCard(set) {
+        const card = document.createElement("div");
+        card.className = "pattern-card set-card";
+        card.setAttribute("data-id", set.id);
+        card.setAttribute("data-type", "set");
+
+        // Get patterns in this set
+        const patterns = set.patterns
+          .map((id) => appData.patterns[id])
+          .filter((pattern) => pattern)
+          .sort((a, b) => (a.setOrder || 0) - (b.setOrder || 0));
+
+        if (patterns.length === 0) return null;
+
+        // Get creator info
+        const creatorInfo = getSetCreatorInfo(set.patterns);
+
+        let thumbnailsHTML = "";
+
+        // Check if this is a grid set or a collection set
+        if (set.gridSize) {
+          const [rows, cols] = set.gridSize
+            .split("x")
+            .map((num) => parseInt(num, 10));
+
+          // Create grid preview
+          thumbnailsHTML = `<div class="set-grid-preview" style="grid-template-rows: repeat(${rows}, 1fr); grid-template-columns: repeat(${cols}, 1fr);">`;
+
+          // Add patterns in order
+          for (let i = 0; i < Math.min(rows * cols, patterns.length); i++) {
+            const pattern = patterns[i];
+            thumbnailsHTML += `
+              <div class="set-grid-item">
+                <img src="${
+                  pattern.thumbnailPath ||
+                  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
+                }" 
+                  alt="${pattern.patternName}" class="pixel-art-image">
+              </div>
+            `;
+          }
+
+          // Fill in empty spaces if the grid isn't complete
+          for (let i = patterns.length; i < rows * cols; i++) {
+            thumbnailsHTML += `
+              <div class="set-grid-item empty">
+                <div class="empty-grid-item"></div>
+              </div>
+            `;
+          }
+
+          thumbnailsHTML += "</div>";
+        } else {
+          // Collection set preview (up to 4 thumbnails with "..." if more)
+          thumbnailsHTML = '<div class="set-collection-preview">';
+
+          // Show up to 3 thumbnails
+          for (let i = 0; i < Math.min(3, patterns.length); i++) {
+            const pattern = patterns[i];
+            thumbnailsHTML += `
+              <div class="set-collection-item">
+                <img src="${
+                  pattern.thumbnailPath ||
+                  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
+                }" 
+                  alt="${pattern.patternName}" class="pixel-art-image">
+              </div>
+            `;
+          }
+
+          // If there are more than 3 patterns, add the "..." item
+          if (patterns.length > 3) {
+            thumbnailsHTML += `
+              <div class="set-collection-item more">
+                <div class="more-patterns">+${patterns.length - 3} more</div>
+              </div>
+            `;
+          }
+
+          thumbnailsHTML += "</div>";
+        }
+
+        // Selection checkbox (only visible in selection mode)
+        const selectionCheckbox = appData.selectionMode
+          ? `<div class="pattern-select">
+              <input type="checkbox" id="select-${set.id}" ${
+              appData.selectedPatterns.has(set.id) ? "checked" : ""
+            }>
+              <label for="select-${set.id}"></label>
+            </div>`
+          : "";
+
+        const html = `
+          ${selectionCheckbox}
+          <div class="set-thumbnail">
+            ${thumbnailsHTML}
+          </div>
+          <div class="pattern-info">
+            <div class="pattern-name">${
+              set.name
+            } <span class="set-badge">Set</span></div>
+            <div class="pattern-creator">by ${creatorInfo.name} of ${
+          creatorInfo.town
+        }</div>
+            <div class="set-count">${patterns.length} pattern${
+          patterns.length !== 1 ? "s" : ""
+        }</div>
+            ${
+              set.gridSize
+                ? `<div class="set-grid-size">${set.gridSize} grid</div>`
+                : ""
+            }
+          </div>
+        `;
+
+        card.innerHTML = html;
+
+        // Handle click event
+        card.addEventListener("click", (e) => {
+          // Check if clicking on checkbox
+          if (e.target.type === "checkbox" || e.target.tagName === "LABEL") {
+            e.stopPropagation();
+            return;
+          }
+
+          // For normal clicks when not in selection mode, open set detail
+          if (!appData.selectionMode && !e.ctrlKey && !e.metaKey) {
+            openSetDetailModal(set.id);
+            return;
+          }
+
+          // For Ctrl/Cmd+click or in selection mode, toggle selection
+          togglePatternSelection(set.id);
+          e.preventDefault();
+        });
+
+        // Add specific handler for the checkbox
+        const checkbox = card.querySelector(`#select-${set.id}`);
+        if (checkbox) {
+          checkbox.addEventListener("change", (e) => {
+            e.stopPropagation();
+            togglePatternSelection(set.id);
+          });
+        }
+
+        return card;
+      }
+
+      // Function to open set detail modal
+      function openSetDetailModal(setId) {
+        const set = appData.sets[setId];
+        if (!set) return;
+
+        // Get patterns in this set
+        const patterns = set.patterns
+          .map((id) => appData.patterns[id])
+          .filter((pattern) => pattern)
+          .sort((a, b) => (a.setOrder || 0) - (b.setOrder || 0));
+
+        if (patterns.length === 0) return;
+
+        // Create modal
+        const modal = document.createElement("div");
+        modal.className = "modal-backdrop";
+        modal.id = "set-detail-modal";
+        modal.style.display = "flex";
+
+        // Get creator info
+        const creatorInfo = getSetCreatorInfo(set.patterns);
+
+        // Create grid layout or collection layout based on set type
+        let patternsHTML = "";
+
+        if (set.gridSize) {
+          const [rows, cols] = set.gridSize
+            .split("x")
+            .map((num) => parseInt(num, 10));
+
+          patternsHTML = `
+            <div class="set-grid-layout" style="grid-template-rows: repeat(${rows}, 1fr); grid-template-columns: repeat(${cols}, 1fr);">
+          `;
+
+          // Position patterns in the grid
+          for (let i = 0; i < Math.min(rows * cols, patterns.length); i++) {
+            const pattern = patterns[i];
+            patternsHTML += `
+              <div class="set-detail-pattern" data-id="${pattern.id}">
+                <img src="${
+                  pattern.thumbnailPath ||
+                  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
+                }" 
+                  alt="${pattern.patternName}" class="pixel-art-image">
+                <div class="pattern-name">${pattern.patternName}</div>
+              </div>
+            `;
+          }
+
+          // Fill in empty spaces if the grid isn't complete
+          for (let i = patterns.length; i < rows * cols; i++) {
+            patternsHTML += `
+              <div class="set-detail-pattern empty">
+                <div class="empty-grid-item"></div>
+                <div class="pattern-name">Empty</div>
+              </div>
+            `;
+          }
+
+          patternsHTML += "</div>";
+        } else {
+          // Collection view
+          patternsHTML = '<div class="set-collection-layout">';
+
+          patterns.forEach((pattern) => {
+            patternsHTML += `
+              <div class="set-detail-pattern" data-id="${pattern.id}">
+                <img src="${
+                  pattern.thumbnailPath ||
+                  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
+                }" 
+                  alt="${pattern.patternName}" class="pixel-art-image">
+                <div class="pattern-name">${pattern.patternName}</div>
+              </div>
+            `;
+          });
+
+          patternsHTML += "</div>";
+        }
+
+        modal.innerHTML = `
+          <div class="modal">
+            <button class="modal-close">&times;</button>
+            <h2 class="modal-title">${set.name}</h2>
+            
+            <div class="set-detail-info">
+              <div class="creator-info">
+                <strong>Creator:</strong> ${creatorInfo.name} of ${
+          creatorInfo.town
+        }
+              </div>
+              <div class="set-detail-meta">
+                <div><strong>Patterns:</strong> ${patterns.length}</div>
+                ${
+                  set.gridSize
+                    ? `<div><strong>Grid Size:</strong> ${set.gridSize}</div>`
+                    : ""
+                }
+              </div>
+              ${set.notes ? `<div class="set-notes">${set.notes}</div>` : ""}
+            </div>
+            
+            <div class="set-patterns-container">
+              ${patternsHTML}
+            </div>
+            
+            <div class="set-actions">
+              <button class="btn" id="edit-set-btn" data-id="${setId}">Edit Set</button>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Add styles if not already added
+        if (!document.getElementById("set-detail-styles")) {
+          const style = document.createElement("style");
+          style.id = "set-detail-styles";
+          style.textContent = `
+            .set-detail-info {
+              margin-bottom: 20px;
+              display: flex;
+              flex-wrap: wrap;
+              gap: 15px;
+            }
+            .set-detail-meta {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 15px;
+            }
+            .set-notes {
+              flex-basis: 100%;
+              margin-top: 10px;
+              padding: 10px;
+              background-color: var(--secondary-color);
+              border-radius: 4px;
+              white-space: pre-line;
+            }
+            .set-patterns-container {
+              margin-bottom: 20px;
+              max-height: 60vh;
+              overflow-y: auto;
+            }
+            .set-grid-layout {
+              display: grid;
+              gap: 10px;
+              justify-content: center;
+            }
+            .set-collection-layout {
+              display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+              gap: 15px;
+            }
+            .set-detail-pattern {
+              border: 1px solid var(--border-color);
+              border-radius: 4px;
+              overflow: hidden;
+              background-color: white;
+              text-align: center;
+              cursor: pointer;
+              transition: transform 0.2s, box-shadow 0.2s;
+            }
+            .set-detail-pattern:hover {
+              transform: translateY(-3px);
+              box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+            .set-detail-pattern img {
+              width: 100%;
+              aspect-ratio: 1;
+              object-fit: contain;
+              display: block;
+            }
+            .set-detail-pattern .pattern-name {
+              padding: 5px;
+              font-size: 0.9rem;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+            .empty-grid-item {
+              background-color: var(--secondary-color);
+              height: 100%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 80px;
+            }
+          `;
+          document.head.appendChild(style);
+        }
+
+        // Add event listeners
+        modal.querySelector(".modal-close").addEventListener("click", () => {
+          document.body.removeChild(modal);
+        });
+
+        // Edit button
+        modal.querySelector("#edit-set-btn").addEventListener("click", () => {
+          document.body.removeChild(modal);
+          editSet(setId);
+        });
+
+        // Pattern click events
+        modal
+          .querySelectorAll(".set-detail-pattern[data-id]")
+          .forEach((patternElement) => {
+            patternElement.addEventListener("click", () => {
+              const patternId = patternElement.getAttribute("data-id");
+              document.body.removeChild(modal);
+              openPatternDetail(patternId);
+            });
+          });
       }
 
       // Render creators view
