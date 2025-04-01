@@ -211,8 +211,8 @@ CURRENT BUG LIST (address later)
       }
 
       .pattern-gallery {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        display: flex;
+        flex-wrap: wrap;
         gap: 20px;
       }
 
@@ -222,6 +222,7 @@ CURRENT BUG LIST (address later)
         overflow: hidden;
         box-shadow: 0 2px 0 0 rgba(0, 0, 0, 0.15);
         transition: transform 0.2s, box-shadow 0.2s;
+        max-width: 200px;
       }
 
       .pattern-card:hover {
@@ -1198,101 +1199,18 @@ CURRENT BUG LIST (address later)
         const gallery = elements.patternGallery;
         gallery.innerHTML = "";
 
-        // Track which patterns are in sets to avoid duplicates
-        const patternsInRenderedSets = new Set();
+        // Get current sort settings
+        const sort = appData.activeSort || {
+          type: "alphabetical",
+          direction: "asc",
+        };
 
-        // First, filter and render sets
-        const visibleSets = Object.values(appData.sets).filter((set) => {
-          // Skip empty sets
-          if (!set.patterns || set.patterns.length === 0) return false;
+        // Get all patterns (including those in sets)
+        const allPatterns = Object.values(appData.patterns);
+        const filteredPatterns = filterPatterns(allPatterns);
 
-          // For sets with a creator filter, check if any pattern in the set matches
-          if (appData.activeFilters.creators.size > 0) {
-            // Get the first pattern to check its creator
-            const firstPatternId = set.patterns[0];
-            const pattern = appData.patterns[firstPatternId];
-            if (!pattern) return false;
-
-            if (
-              !appData.activeFilters.creators.has(
-                pattern.creatorName.toLowerCase()
-              )
-            ) {
-              return false;
-            }
-          }
-
-          // For sets with a set filter, check if this set matches
-          if (appData.activeFilters.sets.size > 0) {
-            if (!appData.activeFilters.sets.has(set.name.toLowerCase())) {
-              return false;
-            }
-          }
-
-          // For tag filters, check if any pattern in the set has the tag
-          if (appData.activeFilters.tags.size > 0) {
-            // Check if any pattern in the set has all the required tags
-            const hasAllTags = set.patterns.some((patternId) => {
-              const pattern = appData.patterns[patternId];
-              if (!pattern) return false;
-
-              return Array.from(appData.activeFilters.tags).every((tag) =>
-                pattern.tags.some(
-                  (patternTag) => patternTag.toLowerCase() === tag
-                )
-              );
-            });
-
-            if (!hasAllTags) return false;
-          }
-
-          // For search filter, check if set name or any pattern in the set matches
-          if (appData.activeFilters.search) {
-            const searchTerm = appData.activeFilters.search.toLowerCase();
-
-            // Check set name
-            if (set.name.toLowerCase().includes(searchTerm)) return true;
-
-            // Check pattern names
-            const hasMatchingPattern = set.patterns.some((patternId) => {
-              const pattern = appData.patterns[patternId];
-              if (!pattern) return false;
-
-              return (
-                pattern.patternName.toLowerCase().includes(searchTerm) ||
-                pattern.creatorName.toLowerCase().includes(searchTerm)
-              );
-            });
-
-            if (!hasMatchingPattern) return false;
-          }
-
-          return true;
-        });
-
-        // Render each set as a card
-        visibleSets.forEach((set) => {
-          const setCard = createSetCard(set);
-          if (setCard) {
-            gallery.appendChild(setCard);
-
-            // Track patterns in this set to avoid duplicates
-            set.patterns.forEach((patternId) => {
-              patternsInRenderedSets.add(patternId);
-            });
-          }
-        });
-
-        // Then get patterns not in sets
-        const patterns = Object.values(appData.patterns).filter(
-          (pattern) => !patternsInRenderedSets.has(pattern.id)
-        );
-
-        const filteredPatterns = filterPatterns(patterns);
-
-        // Check if we have any patterns at all (including sets)
-        const hasAnyPatterns =
-          visibleSets.length > 0 || Object.keys(appData.patterns).length > 0;
+        // Check if we have any patterns at all
+        const hasAnyPatterns = Object.keys(appData.patterns).length > 0;
 
         // Check if any filters are active
         const hasActiveFilters =
@@ -1301,7 +1219,7 @@ CURRENT BUG LIST (address later)
           appData.activeFilters.sets.size > 0 ||
           appData.activeFilters.search;
 
-        if (filteredPatterns.length === 0 && visibleSets.length === 0) {
+        if (filteredPatterns.length === 0) {
           // Different message based on whether there are any patterns or active filters
           if (!hasAnyPatterns) {
             gallery.innerHTML =
@@ -1349,15 +1267,9 @@ CURRENT BUG LIST (address later)
           return;
         }
 
-        // NOW HANDLE SORTING AND RENDERING OF FILTERED PATTERNS
-        const sort = appData.activeSort || {
-          type: "alphabetical",
-          direction: "asc",
-        };
-
-        // Alphabetical sort - just sort and render directly
+        // HANDLE SORTING AND RENDERING OF FILTERED PATTERNS
         if (sort.type === "alphabetical") {
-          // Sort patterns by name
+          // Alphabetical sort - render all patterns and sets in one grid
           const sortedPatterns = [...filteredPatterns].sort((a, b) => {
             const nameA = a.patternName.toLowerCase();
             const nameB = b.patternName.toLowerCase();
@@ -1367,68 +1279,183 @@ CURRENT BUG LIST (address later)
               : nameB.localeCompare(nameA);
           });
 
-          // Render sorted patterns
+          // Render all patterns in one grid
+          const patternsGrid = document.createElement("div");
+          patternsGrid.className = "pattern-gallery";
+
+          // Render patterns
           sortedPatterns.forEach((pattern) => {
             const card = createPatternCard(pattern);
-            gallery.appendChild(card);
+            patternsGrid.appendChild(card);
           });
-        }
-        // Group by Creator or Tag
-        else if (sort.type === "creator" || sort.type === "tag") {
-          // Group patterns by creator or tag
-          const groups = {};
+
+          gallery.appendChild(patternsGrid);
+        } else if (sort.type === "creator") {
+          // Group patterns by creator
+          const creatorGroups = {};
 
           filteredPatterns.forEach((pattern) => {
-            let key;
+            const creatorName = pattern.creatorName;
 
-            if (sort.type === "creator") {
-              key = pattern.creatorName;
-            } else {
-              // tag
-              key = pattern.tags.length > 0 ? pattern.tags[0] : "Untagged";
+            if (!creatorGroups[creatorName]) {
+              creatorGroups[creatorName] = [];
             }
 
-            if (!groups[key]) {
-              groups[key] = [];
-            }
-
-            groups[key].push(pattern);
+            creatorGroups[creatorName].push(pattern);
           });
 
-          // Sort the group names
-          const sortedGroupNames = Object.keys(groups).sort((a, b) => {
+          // Sort the creator names
+          const sortedCreatorNames = Object.keys(creatorGroups).sort((a, b) => {
             return sort.direction === "asc"
               ? a.toLowerCase().localeCompare(b.toLowerCase())
               : b.toLowerCase().localeCompare(a.toLowerCase());
           });
 
-          // Render each group
-          sortedGroupNames.forEach((groupName) => {
-            const groupPatterns = groups[groupName];
+          // Render each creator section
+          sortedCreatorNames.forEach((creatorName) => {
+            const creatorPatterns = creatorGroups[creatorName];
+
+            // Create a section for this creator
+            const creatorSection = document.createElement("div");
+            creatorSection.className = "pattern-group-section";
+
+            // Create creator header with count
+            const creatorHeader = document.createElement("div");
+            creatorHeader.className = "group-header";
+            creatorHeader.innerHTML = `
+        ${creatorName} <span class="group-count">${creatorPatterns.length}</span>
+      `;
+            creatorSection.appendChild(creatorHeader);
+
+            // Add separator
+            const separator = document.createElement("hr");
+            separator.className = "group-separator";
+            creatorSection.appendChild(separator);
+
+            // Create grid for this creator's patterns
+            const patternsGrid = document.createElement("div");
+            patternsGrid.className = "pattern-gallery";
 
             // Sort patterns within the group alphabetically
-            groupPatterns.sort((a, b) => {
+            creatorPatterns.sort((a, b) => {
               const nameA = a.patternName.toLowerCase();
               const nameB = b.patternName.toLowerCase();
               return nameA.localeCompare(nameB);
             });
 
-            // Create group header
-            const groupHeader = document.createElement("div");
-            groupHeader.className = "group-header";
-            groupHeader.innerHTML = `
-        ${groupName} <span class="group-count">${groupPatterns.length}</span>
-      `;
-            gallery.appendChild(groupHeader);
-
-            // Create pattern cards for this group
-            groupPatterns.forEach((pattern) => {
+            // Create pattern cards for this creator
+            creatorPatterns.forEach((pattern) => {
               const card = createPatternCard(pattern);
-              gallery.appendChild(card);
+              patternsGrid.appendChild(card);
             });
+
+            creatorSection.appendChild(patternsGrid);
+            gallery.appendChild(creatorSection);
+          });
+        } else if (sort.type === "tag") {
+          // Group patterns by tag
+          const tagGroups = {};
+
+          filteredPatterns.forEach((pattern) => {
+            // Use the first tag or "Untagged"
+            const tag = pattern.tags.length > 0 ? pattern.tags[0] : "Untagged";
+
+            if (!tagGroups[tag]) {
+              tagGroups[tag] = [];
+            }
+
+            tagGroups[tag].push(pattern);
+          });
+
+          // Sort the tag names
+          const sortedTagNames = Object.keys(tagGroups).sort((a, b) => {
+            return sort.direction === "asc"
+              ? a.toLowerCase().localeCompare(b.toLowerCase())
+              : b.toLowerCase().localeCompare(a.toLowerCase());
+          });
+
+          // Render each tag section
+          sortedTagNames.forEach((tagName) => {
+            const tagPatterns = tagGroups[tagName];
+
+            // Create a section for this tag
+            const tagSection = document.createElement("div");
+            tagSection.className = "pattern-group-section";
+
+            // Create tag header with count
+            const tagHeader = document.createElement("div");
+            tagHeader.className = "group-header";
+            tagHeader.innerHTML = `
+        ${tagName} <span class="group-count">${tagPatterns.length}</span>
+      `;
+            tagSection.appendChild(tagHeader);
+
+            // Add separator
+            const separator = document.createElement("hr");
+            separator.className = "group-separator";
+            tagSection.appendChild(separator);
+
+            // Create grid for this tag's patterns
+            const patternsGrid = document.createElement("div");
+            patternsGrid.className = "pattern-gallery";
+
+            // Sort patterns within the group alphabetically
+            tagPatterns.sort((a, b) => {
+              const nameA = a.patternName.toLowerCase();
+              const nameB = b.patternName.toLowerCase();
+              return nameA.localeCompare(nameB);
+            });
+
+            // Create pattern cards for this tag
+            tagPatterns.forEach((pattern) => {
+              const card = createPatternCard(pattern);
+              patternsGrid.appendChild(card);
+            });
+
+            tagSection.appendChild(patternsGrid);
+            gallery.appendChild(tagSection);
           });
         }
 
+        // Add styles for group headers and separators if they don't exist
+        if (!document.getElementById("group-header-styles")) {
+          const style = document.createElement("style");
+          style.id = "group-header-styles";
+          style.textContent = `
+            .pattern-group-section {
+              margin-bottom: 30px;
+              width: 100%;
+            }
+            .group-header {
+              font-size: 1.5rem;
+              font-weight: bold;
+              padding: 10px 0;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            .group-separator {
+              border: none;
+              height: 1px;
+              background-color: var(--border-color);
+              margin: 0 0 15px 0;
+            }
+            .group-count {
+              background-color: var(--primary-color);
+              color: white;
+              border-radius: 50%;
+              min-width: 24px;
+              height: 24px;
+              padding: 0 4px;
+              font-size: 0.9rem;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+            }
+          `;
+          document.head.appendChild(style);
+        }
+      
         // Add styles for set cards if they don't exist
         if (!document.getElementById("set-card-styles")) {
           const style = document.createElement("style");
