@@ -2,7 +2,6 @@
 CURRENT BUG LIST (address later)
 [ ] When reverting back to Base64 encoded thumbnails from dynamic loading,
       thumbnails do not properly generate (all patterns show "No Thumbnail").
-[ ] Sets should not be selectable in the pattern view multi-select UI.
 [ ] The 'create set' button should be disabled when selected patterns are from multiple creators.
 [ ] The vertical/horizontal grids are flipped IMO. 3x1 should mean 3 columns, 1 row and right now
       it means the opposite!
@@ -42,7 +41,8 @@ CURRENT BUG LIST (address later)
 
       @font-face {
         font-family: "Humming";
-        src: url("nintendoP_Humming-E_002prRegular-FontForge.woff2") format("woff2");
+        src: url("nintendoP_Humming-E_002prRegular-FontForge.woff2")
+          format("woff2");
         font-weight: normal;
         font-style: normal;
         font-display: swap;
@@ -50,7 +50,8 @@ CURRENT BUG LIST (address later)
 
       @font-face {
         font-family: "Farts";
-        src: url("nintendoP_Humming-E_002pr-Regular-Glyphr.otf") format("opentype");
+        src: url("nintendoP_Humming-E_002pr-Regular-Glyphr.otf")
+          format("opentype");
         font-weight: normal;
         font-style: normal;
         font-display: swap;
@@ -71,8 +72,8 @@ CURRENT BUG LIST (address later)
       }
 
       body {
-        font-family: "Seurat Pro B", "Humming", "Segoe UI", Tahoma, Geneva, Verdana,
-          sans-serif;
+        font-family: "Seurat Pro B", "Humming", "Segoe UI", Tahoma, Geneva,
+          Verdana, sans-serif;
         line-height: 1.6;
         color: var(--text-color);
         background-color: #d3efff;
@@ -1709,6 +1710,19 @@ CURRENT BUG LIST (address later)
 
       // Toggle pattern selection
       function togglePatternSelection(patternId) {
+        // Check if this is a set
+        const item = document.querySelector(
+          `.pattern-card[data-id="${patternId}"]`
+        );
+        if (item && item.getAttribute("data-type") === "set") {
+          // If it's a set, don't allow selection
+          showNotification(
+            "Sets cannot be selected individually. Please select patterns instead.",
+            "error"
+          );
+          return;
+        }
+
         if (appData.selectedPatterns.has(patternId)) {
           appData.selectedPatterns.delete(patternId);
         } else {
@@ -1729,7 +1743,10 @@ CURRENT BUG LIST (address later)
         // Update card styling
         document.querySelectorAll(".pattern-card").forEach((card) => {
           const patternId = card.getAttribute("data-id");
-          if (appData.selectedPatterns.has(patternId)) {
+          const isSet = card.getAttribute("data-type") === "set";
+
+          // Don't show sets as selected even if they're in the selectedPatterns set
+          if (appData.selectedPatterns.has(patternId) && !isSet) {
             card.classList.add("selected");
             const checkbox = card.querySelector(`#select-${patternId}`);
             if (checkbox) checkbox.checked = true;
@@ -4033,18 +4050,7 @@ CURRENT BUG LIST (address later)
           thumbnailsHTML += "</div>";
         }
 
-        // Selection checkbox (only visible in selection mode)
-        const selectionCheckbox = appData.selectionMode
-          ? `<div class="pattern-select">
-            <input type="checkbox" id="select-${set.id}" ${
-              appData.selectedPatterns.has(set.id) ? "checked" : ""
-            }>
-            <label for="select-${set.id}"></label>
-          </div>`
-          : "";
-
         const html = `
-          ${selectionCheckbox}
           <div class="set-thumbnail">
             ${thumbnailsHTML}
           </div>
@@ -4053,11 +4059,11 @@ CURRENT BUG LIST (address later)
               set.name
             } <span class="set-badge">Set</span></div>
             <div class="pattern-creator">by ${creatorInfo.name} of ${
-          creatorInfo.town
-        }</div>
+                  creatorInfo.town
+                }</div>
             <div class="set-count">${patterns.length} pattern${
-          patterns.length !== 1 ? "s" : ""
-        }</div>
+                  patterns.length !== 1 ? "s" : ""
+                }</div>
             ${
               set.gridSize
                 ? `<div class="set-grid-size">${set.gridSize} grid</div>`
@@ -4073,6 +4079,7 @@ CURRENT BUG LIST (address later)
           // Check if clicking on checkbox
           if (e.target.type === "checkbox" || e.target.tagName === "LABEL") {
             e.stopPropagation();
+            e.preventDefault(); // Prevent checkbox from being checked
             return;
           }
 
@@ -4082,9 +4089,14 @@ CURRENT BUG LIST (address later)
             return;
           }
 
-          // For Ctrl/Cmd+click or in selection mode, toggle selection
-          togglePatternSelection(set.id);
-          e.preventDefault();
+          // If in selection mode, show a notification that sets cannot be selected
+          if (appData.selectionMode || e.ctrlKey || e.metaKey) {
+            showNotification(
+              "Sets cannot be selected individually. Please select patterns instead.",
+              "error"
+            );
+            e.preventDefault();
+          }
         });
 
         // Add specific handler for the checkbox
@@ -4092,7 +4104,12 @@ CURRENT BUG LIST (address later)
         if (checkbox) {
           checkbox.addEventListener("change", (e) => {
             e.stopPropagation();
-            togglePatternSelection(set.id);
+            e.preventDefault(); // Prevent checkbox from being checked
+            checkbox.checked = false; // Uncheck the checkbox
+            showNotification(
+              "Sets cannot be selected individually. Please select patterns instead.",
+              "error"
+            );
           });
         }
 
