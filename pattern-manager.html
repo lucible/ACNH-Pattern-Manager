@@ -876,6 +876,7 @@ CURRENT BUG LIST (address later)
         renderSidebarFilters();
         enhanceFiltering();
         addBackToTopButton();
+        initSorting();
       }
 
       // Load data from localStorage
@@ -1282,11 +1283,9 @@ CURRENT BUG LIST (address later)
           }
         });
 
-        // Then render individual patterns not in sets
+        // Then get patterns not in sets
         const patterns = Object.values(appData.patterns).filter(
-          (pattern) =>
-            // Skip patterns that are already shown in a set
-            !patternsInRenderedSets.has(pattern.id)
+          (pattern) => !patternsInRenderedSets.has(pattern.id)
         );
 
         const filteredPatterns = filterPatterns(patterns);
@@ -1350,11 +1349,85 @@ CURRENT BUG LIST (address later)
           return;
         }
 
-        // Render individual patterns
-        filteredPatterns.forEach((pattern) => {
-          const card = createPatternCard(pattern);
-          gallery.appendChild(card);
-        });
+        // NOW HANDLE SORTING AND RENDERING OF FILTERED PATTERNS
+        const sort = appData.activeSort || {
+          type: "alphabetical",
+          direction: "asc",
+        };
+
+        // Alphabetical sort - just sort and render directly
+        if (sort.type === "alphabetical") {
+          // Sort patterns by name
+          const sortedPatterns = [...filteredPatterns].sort((a, b) => {
+            const nameA = a.patternName.toLowerCase();
+            const nameB = b.patternName.toLowerCase();
+
+            return sort.direction === "asc"
+              ? nameA.localeCompare(nameB)
+              : nameB.localeCompare(nameA);
+          });
+
+          // Render sorted patterns
+          sortedPatterns.forEach((pattern) => {
+            const card = createPatternCard(pattern);
+            gallery.appendChild(card);
+          });
+        }
+        // Group by Creator or Tag
+        else if (sort.type === "creator" || sort.type === "tag") {
+          // Group patterns by creator or tag
+          const groups = {};
+
+          filteredPatterns.forEach((pattern) => {
+            let key;
+
+            if (sort.type === "creator") {
+              key = pattern.creatorName;
+            } else {
+              // tag
+              key = pattern.tags.length > 0 ? pattern.tags[0] : "Untagged";
+            }
+
+            if (!groups[key]) {
+              groups[key] = [];
+            }
+
+            groups[key].push(pattern);
+          });
+
+          // Sort the group names
+          const sortedGroupNames = Object.keys(groups).sort((a, b) => {
+            return sort.direction === "asc"
+              ? a.toLowerCase().localeCompare(b.toLowerCase())
+              : b.toLowerCase().localeCompare(a.toLowerCase());
+          });
+
+          // Render each group
+          sortedGroupNames.forEach((groupName) => {
+            const groupPatterns = groups[groupName];
+
+            // Sort patterns within the group alphabetically
+            groupPatterns.sort((a, b) => {
+              const nameA = a.patternName.toLowerCase();
+              const nameB = b.patternName.toLowerCase();
+              return nameA.localeCompare(nameB);
+            });
+
+            // Create group header
+            const groupHeader = document.createElement("div");
+            groupHeader.className = "group-header";
+            groupHeader.innerHTML = `
+        ${groupName} <span class="group-count">${groupPatterns.length}</span>
+      `;
+            gallery.appendChild(groupHeader);
+
+            // Create pattern cards for this group
+            groupPatterns.forEach((pattern) => {
+              const card = createPatternCard(pattern);
+              gallery.appendChild(card);
+            });
+          });
+        }
 
         // Add styles for set cards if they don't exist
         if (!document.getElementById("set-card-styles")) {
@@ -1543,6 +1616,233 @@ CURRENT BUG LIST (address later)
 
           return true;
         });
+      }
+
+      // Add the sort by dropdown menu
+      function setupSortByDropdown() {
+        // Find the Sort By button
+        const sortByBtn = document.querySelector(
+          ".action-bar div:last-child button"
+        );
+        if (!sortByBtn) return;
+
+        // Replace the sort button with a dropdown container
+        const sortContainer = document.createElement("div");
+        sortContainer.className = "sort-dropdown-container";
+
+        // Create the new button with dropdown indicator
+        const newSortButton = document.createElement("button");
+        newSortButton.className = "btn btn-secondary sort-dropdown-button";
+        newSortButton.innerHTML =
+          'Sort: Alphabetical <span class="dropdown-arrow">▼</span>';
+
+        // Create the dropdown menu
+        const dropdownMenu = document.createElement("div");
+        dropdownMenu.className = "sort-dropdown-menu";
+        dropdownMenu.innerHTML = `
+          <div class="sort-option active" data-sort="alphabetical" data-direction="asc">
+            <span class="sort-icon">↓</span> Alphabetical
+          </div>
+          <div class="sort-option" data-sort="creator" data-direction="asc">
+            <span class="sort-icon">↓</span> Group by Creator
+          </div>
+          <div class="sort-option" data-sort="tag" data-direction="asc">
+            <span class="sort-icon">↓</span> Group by Tag
+          </div>
+          <hr>
+          <div class="sort-option-setting">
+            <label>
+              <input type="checkbox" id="show-all-tags" disabled>
+              Show patterns under all tags (coming soon)
+            </label>
+          </div>
+        `;
+
+        // Add to the container
+        sortContainer.appendChild(newSortButton);
+        sortContainer.appendChild(dropdownMenu);
+
+        // Replace the old button with our container
+        sortByBtn.parentNode.replaceChild(sortContainer, sortByBtn);
+
+        // Toggle dropdown on button click
+        newSortButton.addEventListener("click", function (e) {
+          e.stopPropagation();
+          dropdownMenu.classList.toggle("show");
+        });
+
+        // Close dropdown when clicking elsewhere
+        document.addEventListener("click", function () {
+          dropdownMenu.classList.remove("show");
+        });
+
+        // Handle sort option selection
+        dropdownMenu.querySelectorAll(".sort-option").forEach((option) => {
+          option.addEventListener("click", function (e) {
+            e.stopPropagation();
+
+            const sortType = this.getAttribute("data-sort");
+            let direction = this.getAttribute("data-direction");
+
+            // Toggle direction if the same option is clicked again
+            if (this.classList.contains("active")) {
+              direction = direction === "asc" ? "desc" : "asc";
+              this.setAttribute("data-direction", direction);
+              this.querySelector(".sort-icon").textContent =
+                direction === "asc" ? "↓" : "↑";
+            } else {
+              // Reset all options
+              dropdownMenu.querySelectorAll(".sort-option").forEach((opt) => {
+                opt.classList.remove("active");
+              });
+
+              // Mark current option as active
+              this.classList.add("active");
+            }
+
+            // Update app state with the selected sort
+            appData.activeSort = {
+              type: sortType,
+              direction: direction,
+            };
+
+            // Update button text to show current sort
+            const sortText = this.textContent.trim();
+            newSortButton.innerHTML = `Sort: ${sortText} <span class="dropdown-arrow">▼</span>`;
+
+            // Hide the dropdown
+            dropdownMenu.classList.remove("show");
+
+            // Re-render the gallery
+            renderPatternGallery();
+          });
+        });
+
+        // Set initial sort state if not already set
+        if (!appData.activeSort) {
+          appData.activeSort = {
+            type: "alphabetical",
+            direction: "asc",
+          };
+        }
+
+        // Add CSS for the dropdown
+        addSortDropdownStyles();
+      }
+
+      function addSortDropdownStyles() {
+        if (document.getElementById("sort-dropdown-styles")) return;
+
+        const style = document.createElement("style");
+        style.id = "sort-dropdown-styles";
+        style.textContent = `
+          .sort-dropdown-container {
+            position: relative;
+            display: inline-block;
+          }
+          
+          .sort-dropdown-button {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+          }
+          
+          .dropdown-arrow {
+            font-size: 0.7rem;
+            margin-left: 5px;
+          }
+          
+          .sort-dropdown-menu {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            width: 220px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+            display: none;
+          }
+          
+          .sort-dropdown-menu.show {
+            display: block;
+          }
+          
+          .sort-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+          }
+          
+          .sort-option:hover {
+            background-color: var(--secondary-color);
+          }
+          
+          .sort-option.active {
+            background-color: #e8f4e8;
+            font-weight: bold;
+          }
+          
+          .sort-icon {
+            display: inline-block;
+            width: 16px;
+            margin-right: 8px;
+            text-align: center;
+          }
+          
+          .sort-option-setting {
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            color: #666;
+          }
+          
+          hr {
+            margin: 5px 0;
+            border: none;
+            border-top: 1px solid var(--border-color);
+          }
+          
+          /* Group headers styling */
+          .group-header {
+            background-color: var(--secondary-color);
+            padding: 10px 15px;
+            margin: 15px 0 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
+          
+          .group-header .group-count {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+          }
+          
+          /* First group header should have smaller top margin */
+          .group-header:first-of-type {
+            margin-top: 0;
+          }
+        `;
+
+        document.head.appendChild(style);
+      }
+
+      // Initialize the sorting
+      function initSorting() {
+        appData.activeSort = {
+          type: "alphabetical",
+          direction: "asc",
+        };
+
+        setupSortByDropdown();
       }
 
       // Add to setupEventListeners function - new button for selection mode
@@ -4059,11 +4359,11 @@ CURRENT BUG LIST (address later)
               set.name
             } <span class="set-badge">Set</span></div>
             <div class="pattern-creator">by ${creatorInfo.name} of ${
-                  creatorInfo.town
-                }</div>
+          creatorInfo.town
+        }</div>
             <div class="set-count">${patterns.length} pattern${
-                  patterns.length !== 1 ? "s" : ""
-                }</div>
+          patterns.length !== 1 ? "s" : ""
+        }</div>
             ${
               set.gridSize
                 ? `<div class="set-grid-size">${set.gridSize} grid</div>`
