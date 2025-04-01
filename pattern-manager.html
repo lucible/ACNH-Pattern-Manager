@@ -540,6 +540,258 @@ CURRENT BUG LIST (address later)
         margin-right: 10px;
       }
 
+      .sort-dropdown-container {
+        position: relative;
+        display: inline-block;
+      }
+
+      .sort-dropdown-button {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .dropdown-arrow {
+        font-size: 0.7rem;
+        margin-left: 5px;
+      }
+
+      .sort-dropdown-menu {
+        position: absolute;
+        right: 0;
+        top: 100%;
+        background-color: white;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        width: 220px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        z-index: 100;
+        display: none;
+      }
+
+      .sort-dropdown-menu.show {
+        display: block;
+      }
+
+      .sort-option {
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        display: flex;
+        align-items: center;
+      }
+
+      .sort-option:hover {
+        background-color: var(--secondary-color);
+      }
+
+      .sort-option.active {
+        background-color: #e8f4e8;
+        font-weight: bold;
+      }
+
+      .sort-icon {
+        display: inline-block;
+        width: 16px;
+        margin-right: 8px;
+        text-align: center;
+      }
+
+      .sort-option-setting {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      hr {
+        margin: 5px 0;
+        border: none;
+        border-top: 1px solid var(--border-color);
+      }
+
+      /* Group headers styling */
+      .group-header {
+        background-color: var(--secondary-color);
+        padding: 10px 15px;
+        margin: 15px 0 10px 0;
+        border-radius: 4px;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .group-header .group-count {
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 0.8rem;
+      }
+
+      /* First group header should have smaller top margin */
+      .group-header:first-of-type {
+        margin-top: 0;
+      }
+
+      .set-card {
+        position: relative;
+      }
+      .set-thumbnail {
+        position: relative;
+        width: 100%;
+        height: 200px;
+        background-color: #f8f8f8;
+        border-bottom: 1px solid var(--border-color);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .set-grid-preview {
+        display: grid;
+        width: 100%;
+        height: 100%;
+        gap: 2px;
+      }
+      /* Base styles for horizontal grids */
+      .set-grid-preview.horizontal-grid {
+        align-self: center;
+        margin: 0 auto;
+        display: grid;
+        grid-template-rows: 1fr;
+      }
+      /* Specific styles for 2x1 grids */
+      .set-grid-preview.horizontal-grid[style*="--cols: 2"] {
+        height: 50%; /* Taller height for 2x1 grids */
+        grid-template-columns: repeat(2, 1fr);
+      }
+      /* Specific styles for 3x1 grids */
+      .set-grid-preview.horizontal-grid[style*="--cols: 3"] {
+        height: 33%; /* Original height for 3x1 grids */
+        grid-template-columns: repeat(3, 1fr);
+      }
+      /* Base styles for vertical grids */
+      .set-grid-preview.vertical-grid {
+        align-self: center;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+      /* Specific styles for 1x2 grids */
+      .set-grid-preview.vertical-grid[style*="--rows: 2"] {
+        width: 50%; /* Wider width for 1x2 grids */
+        grid-template-rows: repeat(2, 1fr);
+      }
+      /* Specific styles for 1x3 grids */
+      .set-grid-preview.vertical-grid[style*="--rows: 3"] {
+        width: 33%; /* Original width for 1x3 grids */
+        grid-template-rows: repeat(3, 1fr);
+      }
+      /* Square grids (e.g., 2x2, 3x3) */
+      .set-grid-preview.square-grid {
+        width: 100%;
+        height: 100%;
+      }
+      .set-grid-item {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        aspect-ratio: 1/1;
+      }
+      .set-grid-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+      .set-grid-item.empty {
+        background-color: var(--secondary-color);
+      }
+      .set-collection-preview {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 2px;
+        width: 100%;
+        height: 100%;
+      }
+      .set-collection-item {
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .set-collection-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .set-collection-item.more {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: var(--secondary-color);
+      }
+      .more-patterns {
+        font-weight: bold;
+        color: var(--primary-color);
+      }
+      .set-badge {
+        display: inline-block;
+        background-color: var(--primary-color);
+        color: white;
+        font-size: 0.7rem;
+        padding: 1px 6px;
+        border-radius: 10px;
+        margin-left: 5px;
+        vertical-align: middle;
+      }
+      .set-count {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 5px;
+      }
+      .set-grid-size {
+        font-size: 0.85rem;
+        color: #666;
+      }
+
+      .pattern-group-section {
+        margin-bottom: 30px;
+        width: 100%;
+      }
+      .group-header {
+        font-size: 1.5rem;
+        font-weight: bold;
+        padding: 10px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .group-separator {
+        border: none;
+        height: 1px;
+        background-color: var(--border-color);
+        margin: 0 0 15px 0;
+      }
+      .group-count {
+        background-color: var(--primary-color);
+        color: white;
+        border-radius: 50%;
+        min-width: 24px;
+        height: 24px;
+        padding: 0 4px;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
       @keyframes spin {
         to {
           transform: rotate(360deg);
@@ -620,8 +872,35 @@ CURRENT BUG LIST (address later)
             />
             <button class="btn">Search</button>
           </div>
-          <div>
-            <button class="btn btn-secondary">Sort By</button>
+          <div class="sort-dropdown-container">
+            <button
+              id="sort-dropdown-button"
+              class="btn btn-secondary sort-dropdown-button"
+            >
+              Sort: Alphabetical <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="sort-dropdown-menu">
+              <div
+                class="sort-option active"
+                data-sort="alphabetical"
+                data-direction="asc"
+              >
+                <span class="sort-icon">↓</span> Alphabetical
+              </div>
+              <div class="sort-option" data-sort="creator" data-direction="asc">
+                <span class="sort-icon">↓</span> Group by Creator
+              </div>
+              <div class="sort-option" data-sort="tag" data-direction="asc">
+                <span class="sort-icon">↓</span> Group by Tag
+              </div>
+              <hr />
+              <div class="sort-option-setting">
+                <label>
+                  <input type="checkbox" id="show-all-tags" disabled />
+                  Show patterns under all tags (coming soon)
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1199,13 +1478,16 @@ CURRENT BUG LIST (address later)
         const gallery = elements.patternGallery;
         gallery.innerHTML = "";
 
+        // Track which patterns are in sets to avoid duplicates
+        const patternsInRenderedSets = new Set();
+
         // Get current sort settings
         const sort = appData.activeSort || {
           type: "alphabetical",
           direction: "asc",
         };
 
-        // Get all patterns (including those in sets)
+        // Get all patterns
         const allPatterns = Object.values(appData.patterns);
         const filteredPatterns = filterPatterns(allPatterns);
 
@@ -1219,7 +1501,77 @@ CURRENT BUG LIST (address later)
           appData.activeFilters.sets.size > 0 ||
           appData.activeFilters.search;
 
-        if (filteredPatterns.length === 0) {
+        // Filter visible sets
+        const visibleSets = Object.values(appData.sets).filter((set) => {
+          // Skip empty sets
+          if (!set.patterns || set.patterns.length === 0) return false;
+
+          // For sets with a creator filter, check if any pattern in the set matches
+          if (appData.activeFilters.creators.size > 0) {
+            // Get the first pattern to check its creator
+            const firstPatternId = set.patterns[0];
+            const pattern = appData.patterns[firstPatternId];
+            if (!pattern) return false;
+
+            if (
+              !appData.activeFilters.creators.has(
+                pattern.creatorName.toLowerCase()
+              )
+            ) {
+              return false;
+            }
+          }
+
+          // For sets with a set filter, check if this set matches
+          if (appData.activeFilters.sets.size > 0) {
+            if (!appData.activeFilters.sets.has(set.name.toLowerCase())) {
+              return false;
+            }
+          }
+
+          // For tag filters, check if any pattern in the set has the tag
+          if (appData.activeFilters.tags.size > 0) {
+            // Check if any pattern in the set has all the required tags
+            const hasAllTags = set.patterns.some((patternId) => {
+              const pattern = appData.patterns[patternId];
+              if (!pattern) return false;
+
+              return Array.from(appData.activeFilters.tags).every((tag) =>
+                pattern.tags.some(
+                  (patternTag) => patternTag.toLowerCase() === tag
+                )
+              );
+            });
+
+            if (!hasAllTags) return false;
+          }
+
+          // For search filter, check if set name or any pattern in the set matches
+          if (appData.activeFilters.search) {
+            const searchTerm = appData.activeFilters.search.toLowerCase();
+
+            // Check set name
+            if (set.name.toLowerCase().includes(searchTerm)) return true;
+
+            // Check pattern names
+            const hasMatchingPattern = set.patterns.some((patternId) => {
+              const pattern = appData.patterns[patternId];
+              if (!pattern) return false;
+
+              return (
+                pattern.patternName.toLowerCase().includes(searchTerm) ||
+                pattern.creatorName.toLowerCase().includes(searchTerm)
+              );
+            });
+
+            if (!hasMatchingPattern) return false;
+          }
+
+          return true;
+        });
+
+        // Handle empty results
+        if (filteredPatterns.length === 0 && visibleSets.length === 0) {
           // Different message based on whether there are any patterns or active filters
           if (!hasAnyPatterns) {
             gallery.innerHTML =
@@ -1267,41 +1619,100 @@ CURRENT BUG LIST (address later)
           return;
         }
 
-        // HANDLE SORTING AND RENDERING OF FILTERED PATTERNS
+        // HANDLE SORTING AND RENDERING BASED ON SORT TYPE
         if (sort.type === "alphabetical") {
-          // Alphabetical sort - render all patterns and sets in one grid
-          const sortedPatterns = [...filteredPatterns].sort((a, b) => {
-            const nameA = a.patternName.toLowerCase();
-            const nameB = b.patternName.toLowerCase();
+          // Create a unified array of both sets and patterns
+          const allItems = [];
 
+          // Add sets as items
+          visibleSets.forEach((set) => {
+            allItems.push({
+              isSet: true,
+              set: set,
+              name: set.name, // For sorting
+            });
+
+            // Track patterns in sets
+            set.patterns.forEach((patternId) => {
+              patternsInRenderedSets.add(patternId);
+            });
+          });
+
+          // Add individual patterns not in sets
+          filteredPatterns.forEach((pattern) => {
+            if (!patternsInRenderedSets.has(pattern.id)) {
+              allItems.push({
+                isSet: false,
+                pattern: pattern,
+                name: pattern.patternName, // For sorting
+              });
+            }
+          });
+
+          // Sort all items alphabetically
+          const sortedItems = allItems.sort((a, b) => {
             return sort.direction === "asc"
-              ? nameA.localeCompare(nameB)
-              : nameB.localeCompare(nameA);
+              ? a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+              : b.name.toLowerCase().localeCompare(a.name.toLowerCase());
           });
 
-          // Render all patterns in one grid
-          const patternsGrid = document.createElement("div");
-          patternsGrid.className = "pattern-gallery";
-
-          // Render patterns
-          sortedPatterns.forEach((pattern) => {
-            const card = createPatternCard(pattern);
-            patternsGrid.appendChild(card);
+          // Render each item based on its type
+          sortedItems.forEach((item) => {
+            if (item.isSet) {
+              const setCard = createSetCard(item.set);
+              if (setCard) gallery.appendChild(setCard);
+            } else {
+              const patternCard = createPatternCard(item.pattern);
+              gallery.appendChild(patternCard);
+            }
           });
-
-          gallery.appendChild(patternsGrid);
         } else if (sort.type === "creator") {
-          // Group patterns by creator
+          // Group both sets and patterns by creator
           const creatorGroups = {};
 
-          filteredPatterns.forEach((pattern) => {
+          // First group visible sets by creator
+          visibleSets.forEach((set) => {
+            if (set.patterns.length === 0) return;
+
+            // Get creator from first pattern in set
+            const firstPatternId = set.patterns[0];
+            const pattern = appData.patterns[firstPatternId];
+            if (!pattern) return;
+
             const creatorName = pattern.creatorName;
 
             if (!creatorGroups[creatorName]) {
               creatorGroups[creatorName] = [];
             }
 
-            creatorGroups[creatorName].push(pattern);
+            // Add set as an item
+            creatorGroups[creatorName].push({
+              isSet: true,
+              set: set,
+              name: set.name, // For sorting within creator group
+            });
+
+            // Track patterns in this set
+            set.patterns.forEach((patternId) => {
+              patternsInRenderedSets.add(patternId);
+            });
+          });
+
+          // Then group individual patterns not in sets
+          filteredPatterns.forEach((pattern) => {
+            if (patternsInRenderedSets.has(pattern.id)) return;
+
+            const creatorName = pattern.creatorName;
+
+            if (!creatorGroups[creatorName]) {
+              creatorGroups[creatorName] = [];
+            }
+
+            creatorGroups[creatorName].push({
+              isSet: false,
+              pattern: pattern,
+              name: pattern.patternName, // For sorting within creator group
+            });
           });
 
           // Sort the creator names
@@ -1313,7 +1724,7 @@ CURRENT BUG LIST (address later)
 
           // Render each creator section
           sortedCreatorNames.forEach((creatorName) => {
-            const creatorPatterns = creatorGroups[creatorName];
+            const creatorItems = creatorGroups[creatorName];
 
             // Create a section for this creator
             const creatorSection = document.createElement("div");
@@ -1323,8 +1734,8 @@ CURRENT BUG LIST (address later)
             const creatorHeader = document.createElement("div");
             creatorHeader.className = "group-header";
             creatorHeader.innerHTML = `
-        ${creatorName} <span class="group-count">${creatorPatterns.length}</span>
-      `;
+              ${creatorName} <span class="group-count">${creatorItems.length}</span>
+            `;
             creatorSection.appendChild(creatorHeader);
 
             // Add separator
@@ -1336,35 +1747,91 @@ CURRENT BUG LIST (address later)
             const patternsGrid = document.createElement("div");
             patternsGrid.className = "pattern-gallery";
 
-            // Sort patterns within the group alphabetically
-            creatorPatterns.sort((a, b) => {
-              const nameA = a.patternName.toLowerCase();
-              const nameB = b.patternName.toLowerCase();
-              return nameA.localeCompare(nameB);
+            // Sort items within the group alphabetically
+            creatorItems.sort((a, b) => {
+              return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
             });
 
-            // Create pattern cards for this creator
-            creatorPatterns.forEach((pattern) => {
-              const card = createPatternCard(pattern);
-              patternsGrid.appendChild(card);
+            // Create cards for this creator
+            creatorItems.forEach((item) => {
+              if (item.isSet) {
+                const setCard = createSetCard(item.set);
+                if (setCard) {
+                  patternsGrid.appendChild(setCard);
+                }
+              } else {
+                const card = createPatternCard(item.pattern);
+                patternsGrid.appendChild(card);
+              }
             });
 
             creatorSection.appendChild(patternsGrid);
             gallery.appendChild(creatorSection);
           });
         } else if (sort.type === "tag") {
-          // Group patterns by tag
+          // Group by tag
           const tagGroups = {};
 
+          // Process sets
+          visibleSets.forEach((set) => {
+            if (!set.patterns || set.patterns.length === 0) return;
+
+            // Determine primary tag for the set
+            const tagCounts = new Map();
+
+            // Count occurrences of each tag across patterns in the set
+            set.patterns.forEach((patternId) => {
+              const pattern = appData.patterns[patternId];
+              if (!pattern || !pattern.tags.length) return;
+
+              pattern.tags.forEach((tag) => {
+                tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+              });
+            });
+
+            // Find the most frequent tag
+            let primaryTag = "Untagged";
+            let maxCount = 0;
+
+            tagCounts.forEach((count, tag) => {
+              if (count > maxCount) {
+                maxCount = count;
+                primaryTag = tag;
+              }
+            });
+
+            // Add set to the corresponding tag group
+            if (!tagGroups[primaryTag]) {
+              tagGroups[primaryTag] = [];
+            }
+
+            tagGroups[primaryTag].push({
+              isSet: true,
+              set: set,
+              name: set.name, // For sorting within tag group
+            });
+
+            // Track patterns in this set
+            set.patterns.forEach((patternId) => {
+              patternsInRenderedSets.add(patternId);
+            });
+          });
+
+          // Process individual patterns not in sets
           filteredPatterns.forEach((pattern) => {
-            // Use the first tag or "Untagged"
+            if (patternsInRenderedSets.has(pattern.id)) return;
+
             const tag = pattern.tags.length > 0 ? pattern.tags[0] : "Untagged";
 
             if (!tagGroups[tag]) {
               tagGroups[tag] = [];
             }
 
-            tagGroups[tag].push(pattern);
+            tagGroups[tag].push({
+              isSet: false,
+              pattern: pattern,
+              name: pattern.patternName, // For sorting within tag group
+            });
           });
 
           // Sort the tag names
@@ -1376,7 +1843,7 @@ CURRENT BUG LIST (address later)
 
           // Render each tag section
           sortedTagNames.forEach((tagName) => {
-            const tagPatterns = tagGroups[tagName];
+            const tagItems = tagGroups[tagName];
 
             // Create a section for this tag
             const tagSection = document.createElement("div");
@@ -1386,8 +1853,8 @@ CURRENT BUG LIST (address later)
             const tagHeader = document.createElement("div");
             tagHeader.className = "group-header";
             tagHeader.innerHTML = `
-        ${tagName} <span class="group-count">${tagPatterns.length}</span>
-      `;
+              ${tagName} <span class="group-count">${tagItems.length}</span>
+            `;
             tagSection.appendChild(tagHeader);
 
             // Add separator
@@ -1399,195 +1866,27 @@ CURRENT BUG LIST (address later)
             const patternsGrid = document.createElement("div");
             patternsGrid.className = "pattern-gallery";
 
-            // Sort patterns within the group alphabetically
-            tagPatterns.sort((a, b) => {
-              const nameA = a.patternName.toLowerCase();
-              const nameB = b.patternName.toLowerCase();
-              return nameA.localeCompare(nameB);
+            // Sort items alphabetically within the tag group
+            tagItems.sort((a, b) => {
+              return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
             });
 
-            // Create pattern cards for this tag
-            tagPatterns.forEach((pattern) => {
-              const card = createPatternCard(pattern);
-              patternsGrid.appendChild(card);
+            // Create items for this tag
+            tagItems.forEach((item) => {
+              if (item.isSet) {
+                const setCard = createSetCard(item.set);
+                if (setCard) {
+                  patternsGrid.appendChild(setCard);
+                }
+              } else {
+                const card = createPatternCard(item.pattern);
+                patternsGrid.appendChild(card);
+              }
             });
 
             tagSection.appendChild(patternsGrid);
             gallery.appendChild(tagSection);
           });
-        }
-
-        // Add styles for group headers and separators if they don't exist
-        if (!document.getElementById("group-header-styles")) {
-          const style = document.createElement("style");
-          style.id = "group-header-styles";
-          style.textContent = `
-            .pattern-group-section {
-              margin-bottom: 30px;
-              width: 100%;
-            }
-            .group-header {
-              font-size: 1.5rem;
-              font-weight: bold;
-              padding: 10px 0;
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            }
-            .group-separator {
-              border: none;
-              height: 1px;
-              background-color: var(--border-color);
-              margin: 0 0 15px 0;
-            }
-            .group-count {
-              background-color: var(--primary-color);
-              color: white;
-              border-radius: 50%;
-              min-width: 24px;
-              height: 24px;
-              padding: 0 4px;
-              font-size: 0.9rem;
-              display: inline-flex;
-              align-items: center;
-              justify-content: center;
-            }
-          `;
-          document.head.appendChild(style);
-        }
-      
-        // Add styles for set cards if they don't exist
-        if (!document.getElementById("set-card-styles")) {
-          const style = document.createElement("style");
-          style.id = "set-card-styles";
-          style.textContent = `
-            .set-card {
-              position: relative;
-            }
-            .set-thumbnail {
-              position: relative;
-              width: 100%;
-              height: 200px;
-              background-color: #f8f8f8;
-              border-bottom: 1px solid var(--border-color);
-              overflow: hidden;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
-            .set-grid-preview {
-              display: grid;
-              width: 100%;
-              height: 100%;
-              gap: 2px;
-            }
-            /* Base styles for horizontal grids */
-            .set-grid-preview.horizontal-grid {
-              align-self: center;
-              margin: 0 auto;
-              display: grid;
-              grid-template-rows: 1fr;
-            }
-            /* Specific styles for 2x1 grids */
-            .set-grid-preview.horizontal-grid[style*="--cols: 2"] {
-              height: 50%; /* Taller height for 2x1 grids */
-              grid-template-columns: repeat(2, 1fr);
-            }
-            /* Specific styles for 3x1 grids */
-            .set-grid-preview.horizontal-grid[style*="--cols: 3"] {
-              height: 33%; /* Original height for 3x1 grids */
-              grid-template-columns: repeat(3, 1fr);
-            }
-            /* Base styles for vertical grids */
-            .set-grid-preview.vertical-grid {
-              align-self: center;
-              margin: 0 auto;
-              display: grid;
-              grid-template-columns: 1fr;
-            }
-            /* Specific styles for 1x2 grids */
-            .set-grid-preview.vertical-grid[style*="--rows: 2"] {
-              width: 50%; /* Wider width for 1x2 grids */
-              grid-template-rows: repeat(2, 1fr);
-            }
-            /* Specific styles for 1x3 grids */
-            .set-grid-preview.vertical-grid[style*="--rows: 3"] {
-              width: 33%; /* Original width for 1x3 grids */
-              grid-template-rows: repeat(3, 1fr);
-            }
-            /* Square grids (e.g., 2x2, 3x3) */
-            .set-grid-preview.square-grid {
-              width: 100%;
-              height: 100%;
-            }
-            .set-grid-item {
-              width: 100%;
-              height: 100%;
-              overflow: hidden;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              aspect-ratio: 1/1;
-            }
-            .set-grid-item img {
-              width: 100%;
-              height: 100%;
-              object-fit: contain;
-              image-rendering: pixelated;
-            }
-            .set-grid-item.empty {
-              background-color: var(--secondary-color);
-            }
-            .set-collection-preview {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              grid-template-rows: repeat(2, 1fr);
-              gap: 2px;
-              width: 100%;
-              height: 100%;
-            }
-            .set-collection-item {
-              overflow: hidden;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            }
-            .set-collection-item img {
-              width: 100%;
-              height: 100%;
-              object-fit: cover;
-            }
-            .set-collection-item.more {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background-color: var(--secondary-color);
-            }
-            .more-patterns {
-              font-weight: bold;
-              color: var(--primary-color);
-            }
-            .set-badge {
-              display: inline-block;
-              background-color: var(--primary-color);
-              color: white;
-              font-size: 0.7rem;
-              padding: 1px 6px;
-              border-radius: 10px;
-              margin-left: 5px;
-              vertical-align: middle;
-            }
-            .set-count {
-              font-size: 0.85rem;
-              color: #666;
-              margin-top: 5px;
-            }
-            .set-grid-size {
-              font-size: 0.85rem;
-              color: #666;
-            }
-          `;
-          document.head.appendChild(style);
         }
       }
 
@@ -1647,53 +1946,14 @@ CURRENT BUG LIST (address later)
 
       // Add the sort by dropdown menu
       function setupSortByDropdown() {
-        // Find the Sort By button
-        const sortByBtn = document.querySelector(
-          ".action-bar div:last-child button"
-        );
-        if (!sortByBtn) return;
+        // Find dropdown elements that are in the HTML template
+        const sortButton = document.querySelector(".sort-dropdown-button");
+        const dropdownMenu = document.querySelector(".sort-dropdown-menu");
 
-        // Replace the sort button with a dropdown container
-        const sortContainer = document.createElement("div");
-        sortContainer.className = "sort-dropdown-container";
-
-        // Create the new button with dropdown indicator
-        const newSortButton = document.createElement("button");
-        newSortButton.className = "btn btn-secondary sort-dropdown-button";
-        newSortButton.innerHTML =
-          'Sort: Alphabetical <span class="dropdown-arrow">▼</span>';
-
-        // Create the dropdown menu
-        const dropdownMenu = document.createElement("div");
-        dropdownMenu.className = "sort-dropdown-menu";
-        dropdownMenu.innerHTML = `
-          <div class="sort-option active" data-sort="alphabetical" data-direction="asc">
-            <span class="sort-icon">↓</span> Alphabetical
-          </div>
-          <div class="sort-option" data-sort="creator" data-direction="asc">
-            <span class="sort-icon">↓</span> Group by Creator
-          </div>
-          <div class="sort-option" data-sort="tag" data-direction="asc">
-            <span class="sort-icon">↓</span> Group by Tag
-          </div>
-          <hr>
-          <div class="sort-option-setting">
-            <label>
-              <input type="checkbox" id="show-all-tags" disabled>
-              Show patterns under all tags (coming soon)
-            </label>
-          </div>
-        `;
-
-        // Add to the container
-        sortContainer.appendChild(newSortButton);
-        sortContainer.appendChild(dropdownMenu);
-
-        // Replace the old button with our container
-        sortByBtn.parentNode.replaceChild(sortContainer, sortByBtn);
+        if (!sortButton || !dropdownMenu) return;
 
         // Toggle dropdown on button click
-        newSortButton.addEventListener("click", function (e) {
+        sortButton.addEventListener("click", function (e) {
           e.stopPropagation();
           dropdownMenu.classList.toggle("show");
         });
@@ -1735,7 +1995,7 @@ CURRENT BUG LIST (address later)
 
             // Update button text to show current sort
             const sortText = this.textContent.trim();
-            newSortButton.innerHTML = `Sort: ${sortText} <span class="dropdown-arrow">▼</span>`;
+            sortButton.innerHTML = `Sort: ${sortText} <span class="dropdown-arrow">▼</span>`;
 
             // Hide the dropdown
             dropdownMenu.classList.remove("show");
@@ -1752,114 +2012,6 @@ CURRENT BUG LIST (address later)
             direction: "asc",
           };
         }
-
-        // Add CSS for the dropdown
-        addSortDropdownStyles();
-      }
-
-      function addSortDropdownStyles() {
-        if (document.getElementById("sort-dropdown-styles")) return;
-
-        const style = document.createElement("style");
-        style.id = "sort-dropdown-styles";
-        style.textContent = `
-          .sort-dropdown-container {
-            position: relative;
-            display: inline-block;
-          }
-          
-          .sort-dropdown-button {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-          }
-          
-          .dropdown-arrow {
-            font-size: 0.7rem;
-            margin-left: 5px;
-          }
-          
-          .sort-dropdown-menu {
-            position: absolute;
-            right: 0;
-            top: 100%;
-            background-color: white;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            width: 220px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            z-index: 100;
-            display: none;
-          }
-          
-          .sort-dropdown-menu.show {
-            display: block;
-          }
-          
-          .sort-option {
-            padding: 8px 12px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-          }
-          
-          .sort-option:hover {
-            background-color: var(--secondary-color);
-          }
-          
-          .sort-option.active {
-            background-color: #e8f4e8;
-            font-weight: bold;
-          }
-          
-          .sort-icon {
-            display: inline-block;
-            width: 16px;
-            margin-right: 8px;
-            text-align: center;
-          }
-          
-          .sort-option-setting {
-            padding: 8px 12px;
-            font-size: 0.9rem;
-            color: #666;
-          }
-          
-          hr {
-            margin: 5px 0;
-            border: none;
-            border-top: 1px solid var(--border-color);
-          }
-          
-          /* Group headers styling */
-          .group-header {
-            background-color: var(--secondary-color);
-            padding: 10px 15px;
-            margin: 15px 0 10px 0;
-            border-radius: 4px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          }
-          
-          .group-header .group-count {
-            background-color: var(--primary-color);
-            color: white;
-            border-radius: 12px;
-            padding: 2px 8px;
-            font-size: 0.8rem;
-          }
-          
-          /* First group header should have smaller top margin */
-          .group-header:first-of-type {
-            margin-top: 0;
-          }
-        `;
-
-        document.head.appendChild(style);
       }
 
       // Initialize the sorting
