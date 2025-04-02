@@ -11,8 +11,6 @@ CURRENT BUG LIST (address later)
 [ ] Rename the farts css class
 [ ] Make Tags and Creators sections of the sidebar collapsable & start with Creators collapsed
 [ ] Add sort by # of patterns and sort alphabetical options to the Creators tab
-[ ] Fix the CSS on the selected tags section
-[ ] Fix the CSS on the creators' tab
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -115,6 +113,27 @@ CURRENT BUG LIST (address later)
         padding-top: 20px;
       }
 
+      .completion-badge {
+        display: inline-block;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        vertical-align: middle;
+      }
+
+      #creator-filters {
+        text-transform: capitalize;
+      }
+
+      .filter-wrapper {
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      #selection-mode-btn {
+        margin-left: auto;
+      }
+
       .container {
         /* max-width: 1175px; */
         margin: 0 auto;
@@ -190,10 +209,18 @@ CURRENT BUG LIST (address later)
         display: flex;
         justify-content: space-between;
         align-items: center; /* Center align all items */
+        margin: -20px;
         margin-bottom: 20px;
+        padding: 20px;
         flex-wrap: wrap; /* Allow wrapping on smaller screens */
         gap: 10px;
+        background: white;
+        border-bottom: 2px solid var(--primary-color);
       }
+      /* .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+      } */
 
       /* Properly align the control buttons group */
       .action-bar > div:last-child:not(.search-bar) {
@@ -242,6 +269,12 @@ CURRENT BUG LIST (address later)
 
       #import-btn {
         font-weight: bold;
+      }
+
+      #creator-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
       }
 
       .btn:hover {
@@ -626,10 +659,12 @@ CURRENT BUG LIST (address later)
         background-color: white;
         border: 1px solid var(--border-color);
         border-radius: 4px;
-        width: 220px;
+        min-width: 100%;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         z-index: 100;
         display: none;
+        font-family: "Rodin NTLG EB", "Segoe UI", Tahoma, Geneva, Verdana,
+          sans-serif;
       }
 
       .sort-dropdown-menu.show {
@@ -662,8 +697,13 @@ CURRENT BUG LIST (address later)
 
       .sort-option-setting {
         padding: 8px 12px;
-        font-size: 0.9rem;
+        font-size: 0.7rem;
         color: #666;
+      }
+      .show-all-tags-label {
+        display: inline-flex;
+        gap: 1em;
+        align-items: center;
       }
 
       hr {
@@ -868,11 +908,8 @@ CURRENT BUG LIST (address later)
         gap: 10px;
         margin: 0;
         padding: 0;
-        background-color: var(--secondary-color);
-        border-radius: 5px;
         flex: 2; /* Take available space */
         min-width: 200px; /* Ensure doesn't get too small */
-        min-height: 40px;
       }
 
       .active-filters-title {
@@ -923,6 +960,7 @@ CURRENT BUG LIST (address later)
       .creator-filter {
         background-color: #e8eaf4;
         border-color: #6495ed;
+        text-transform: capitalize;
       }
 
       .set-filter {
@@ -1447,7 +1485,7 @@ CURRENT BUG LIST (address later)
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         padding: 15px;
-        margin-bottom: 15px;
+        width: 24%;
       }
       .creator-header {
         display: flex;
@@ -1461,22 +1499,13 @@ CURRENT BUG LIST (address later)
         gap: 10px;
         margin-bottom: 10px;
       }
-      .creator-detail {
-        display: flex;
-        flex-direction: column;
-        background-color: var(--secondary-color);
-        padding: 8px 12px;
-        border-radius: 5px;
-        flex: 1;
-        min-width: 150px;
-      }
       .detail-label {
         font-size: 0.8rem;
         color: #666;
       }
       .detail-value {
         font-weight: bold;
-        margin-top: 3px;
+        /* margin-top: 3px; */
       }
       .creator-actions {
         display: flex;
@@ -1485,14 +1514,6 @@ CURRENT BUG LIST (address later)
       }
       .create-creator-btn {
         margin-left: auto;
-      }
-
-      .creator-card {
-        background-color: white;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 15px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
 
       .creator-header {
@@ -1540,21 +1561,13 @@ CURRENT BUG LIST (address later)
       }
 
       .creator-detail {
+        display: flex;
+        flex-direction: column;
         background-color: var(--secondary-color);
-        padding: 10px;
+        padding: 7px 10px;
         border-radius: 5px;
         flex: 1;
         min-width: 100px;
-      }
-
-      .detail-label {
-        font-size: 0.8rem;
-        color: #666;
-        margin-bottom: 5px;
-      }
-
-      .detail-value {
-        font-weight: bold;
       }
 
       .creator-notes {
@@ -1603,12 +1616,6 @@ CURRENT BUG LIST (address later)
           flex: none;
           max-width: 100%;
         }
-
-        .action-bar {
-          flex-direction: column;
-          align-items: stretch;
-        }
-
         .search-bar {
           flex: 1 1 100%; /* Take full width on mobile */
           max-width: none;
@@ -1671,17 +1678,17 @@ CURRENT BUG LIST (address later)
               >
                 <span class="sort-icon">↓</span> Alphabetical
               </div>
-              <div class="sort-option" data-sort="creator" data-direction="asc">
-                <span class="sort-icon">↓</span> Group by Creator
-              </div>
               <div class="sort-option" data-sort="tag" data-direction="asc">
-                <span class="sort-icon">↓</span> Group by Tag
+                <span class="sort-icon">↓</span> Group by 🏷️
+              </div>
+              <div class="sort-option" data-sort="creator" data-direction="asc">
+                <span class="sort-icon">↓</span> Group by 🎨
               </div>
               <hr />
               <div class="sort-option-setting">
-                <label>
+                <label class="show-all-tags-label">
                   <input type="checkbox" id="show-all-tags" disabled />
-                  Show patterns under all tags (coming soon)
+                  Show patterns under all relevant tags
                 </label>
               </div>
             </div>
@@ -1691,7 +1698,7 @@ CURRENT BUG LIST (address later)
         <div class="main-content">
           <div class="sidebar">
             <div class="sidebar-section">
-              <h3 class="sidebar-title">Tags</h3>
+              <h3 class="sidebar-title">🏷️ Tags</h3>
               <ul class="sidebar-list" id="tag-filters">
                 <li>Clothing <span class="filter-count">24</span></li>
                 <li>Designs <span class="filter-count">16</span></li>
@@ -1700,7 +1707,7 @@ CURRENT BUG LIST (address later)
               </ul>
             </div>
             <div class="sidebar-section">
-              <h3 class="sidebar-title">Creators</h3>
+              <h3 class="sidebar-title">🎨 Creators</h3>
               <ul class="sidebar-list" id="creator-filters">
                 <li>Creator1 <span class="filter-count">10</span></li>
                 <li>Creator2 <span class="filter-count">5</span></li>
@@ -2219,37 +2226,7 @@ CURRENT BUG LIST (address later)
           } else if (hasActiveFilters) {
             // We have patterns, but none match the current filters
             let message =
-              "<p>No patterns match the current filter combination.</p>";
-
-            // Build more specific message based on active filters
-            let filterDetails = [];
-
-            if (appData.activeFilters.tags.size > 0) {
-              const tags = Array.from(appData.activeFilters.tags).join(", ");
-              filterDetails.push(`tags: ${tags}`);
-            }
-
-            if (appData.activeFilters.creators.size > 0) {
-              const creators = Array.from(appData.activeFilters.creators).join(
-                ", "
-              );
-              filterDetails.push(`creators: ${creators}`);
-            }
-
-            if (appData.activeFilters.sets.size > 0) {
-              const sets = Array.from(appData.activeFilters.sets).join(", ");
-              filterDetails.push(`sets: ${sets}`);
-            }
-
-            if (appData.activeFilters.search) {
-              filterDetails.push(`search: "${appData.activeFilters.search}"`);
-            }
-
-            if (filterDetails.length > 0) {
-              message += `<p>Try adjusting or clearing your filters (${filterDetails.join(
-                "; "
-              )}).</p>`;
-            }
+              "<p>No patterns match the current filter combination. Try adjusting or clearing your filters.</p>";
 
             gallery.innerHTML = message;
           } else {
@@ -2425,7 +2402,7 @@ CURRENT BUG LIST (address later)
             });
 
             // Find the most frequent tag
-            let primaryTag = "Untagged";
+            let primaryTag = "untagged";
             let maxCount = 0;
 
             tagCounts.forEach((count, tag) => {
@@ -2456,7 +2433,7 @@ CURRENT BUG LIST (address later)
           filteredPatterns.forEach((pattern) => {
             if (patternsInRenderedSets.has(pattern.id)) return;
 
-            const tag = pattern.tags.length > 0 ? pattern.tags[0] : "Untagged";
+            const tag = pattern.tags.length > 0 ? pattern.tags[0] : "untagged";
 
             if (!tagGroups[tag]) {
               tagGroups[tag] = [];
@@ -2664,7 +2641,7 @@ CURRENT BUG LIST (address later)
         selectionBtn.innerHTML = '<span class="selection-icon">☐</span> Select';
 
         // Insert before the Sort By button
-        const sortByBtn = actionBar.querySelector("div:last-child button");
+        const sortByBtn = actionBar.querySelector(".sort-dropdown-container");
         sortByBtn.parentNode.insertBefore(selectionBtn, sortByBtn);
 
         // Add event listener
@@ -2790,9 +2767,7 @@ CURRENT BUG LIST (address later)
               onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+'">
             ${creatorBadge}
               <div class="pattern-info">
-            <div class="pattern-name">${
-              pattern.patternName
-            }</div>
+            <div class="pattern-name">${pattern.patternName}</div>
             <div class="pattern-creator">by ${pattern.creatorName} of ${
           pattern.townName
         }</div>
@@ -3346,13 +3321,8 @@ CURRENT BUG LIST (address later)
           <li class="${
             appData.activeFilters.untagged ? "active" : ""
           }" data-filter="untagged">
-            Untagged 
+            untagged 
             <span class="filter-count">${untaggedCount}</span>
-            ${
-              appData.activeFilters.untagged
-                ? '<span class="filter-remove">×</span>'
-                : ""
-            }
           </li>`;
 
         // Create tag filters HTML with untagged option first
@@ -3366,7 +3336,6 @@ CURRENT BUG LIST (address later)
               <li class="${isActive ? "active" : ""}" data-tag="${tag}">
                 ${tag} 
                 <span class="filter-count">${count}</span>
-                ${isActive ? '<span class="filter-remove">×</span>' : ""}
               </li>`;
             })
             .join("");
@@ -3488,7 +3457,6 @@ CURRENT BUG LIST (address later)
         <li class="${isActive ? "active" : ""}" data-creator="${creator}">
           ${creator} 
           <span class="filter-count">${count}</span>
-          ${isActive ? '<span class="filter-remove">×</span>' : ""}
         </li>`;
           })
           .join("");
@@ -3647,7 +3615,7 @@ CURRENT BUG LIST (address later)
           // Insert in the middle of the action bar (after search, before controls)
           actionBar.insertBefore(
             filterWrapperDiv,
-            actionBar.querySelector("div:last-child")
+            actionBar.querySelector("#selection-mode-btn")
           );
         }
 
@@ -3693,7 +3661,7 @@ CURRENT BUG LIST (address later)
         if (appData.activeFilters.untagged) {
           const untaggedFilter = document.createElement("span");
           untaggedFilter.className = "active-filter tag-filter";
-          untaggedFilter.innerHTML = `Untagged <span class="filter-remove" data-type="untagged">×</span>`;
+          untaggedFilter.innerHTML = `🏷️ untagged <span class="filter-remove" data-type="untagged">×</span>`;
           filtersList.appendChild(untaggedFilter);
         }
 
@@ -3701,7 +3669,7 @@ CURRENT BUG LIST (address later)
         appData.activeFilters.tags.forEach((tag) => {
           const tagFilter = document.createElement("span");
           tagFilter.className = "active-filter tag-filter";
-          tagFilter.innerHTML = `Tag: ${tag} <span class="filter-remove" data-type="tag" data-value="${tag}">×</span>`;
+          tagFilter.innerHTML = `🏷️ ${tag} <span class="filter-remove" data-type="tag" data-value="${tag}">×</span>`;
           filtersList.appendChild(tagFilter);
         });
 
@@ -3709,7 +3677,7 @@ CURRENT BUG LIST (address later)
         appData.activeFilters.creators.forEach((creator) => {
           const creatorFilter = document.createElement("span");
           creatorFilter.className = "active-filter creator-filter";
-          creatorFilter.innerHTML = `Creator: ${creator} <span class="filter-remove" data-type="creator" data-value="${creator}">×</span>`;
+          creatorFilter.innerHTML = `🎨 ${creator} <span class="filter-remove" data-type="creator" data-value="${creator}">×</span>`;
           filtersList.appendChild(creatorFilter);
         });
 
