@@ -10,6 +10,9 @@ CURRENT BUG LIST (address later)
       selected cards clonk down while unselected cards ease down. how do that on selected cards?!
 [ ] Rename the farts css class
 [ ] Creators alphabetical and pattern # are opposite so the arrows don't really work for both...
+[ ] Should probably integrate the TownID and the PlayerID from the NHD file into the program's
+      creator ID to ensure that creators with the same name & town name (but presumably
+      different IDs) don't get merged
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -1977,6 +1980,19 @@ CURRENT BUG LIST (address later)
         setupCollapsibleSidebar();
         setupCreatorSearch();
         setupSetSearch();
+      }
+
+      function getPatternThumbnailSrc(pattern) {
+        // First try thumbnailPath (which would be Base64 if enabled)
+        if (pattern.thumbnailPath) {
+          return pattern.thumbnailPath;
+        }
+        // Then try originalFilePath as fallback when using file paths instead of Base64
+        else if (pattern.originalFilePath) {
+          return pattern.originalFilePath;
+        }
+        // Default "no thumbnail" image
+        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
       }
 
       function generateCreatorId(creatorName, townName, addTimestamp = false) {
@@ -4469,10 +4485,7 @@ CURRENT BUG LIST (address later)
                         ${setPatterns
                           .map(
                             (pattern, index) => `
-                            <img class="set-pattern" src="${
-                              pattern.thumbnailPath ||
-                              "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
-                            }" 
+                            <img class="set-pattern" src="${getPatternThumbnailSrc(pattern)}" 
                                 alt="${pattern.patternName}" 
                                 title="${pattern.patternName}" 
                                 data-id="${pattern.id}" 
@@ -4684,10 +4697,7 @@ CURRENT BUG LIST (address later)
           patternElement.setAttribute("draggable", "true");
 
           patternElement.innerHTML = `
-            <img src="${
-              pattern.thumbnailPath ||
-              "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
-            }" 
+            <img src="${getPatternThumbnailSrc(pattern)}" 
                 class="set-pattern pixel-art-image" 
                 title="${pattern.patternName}">
             <div class="pattern-order">${pattern.setOrder || 0}</div>
@@ -5008,10 +5018,7 @@ CURRENT BUG LIST (address later)
             patternElement.setAttribute("draggable", "true");
 
             patternElement.innerHTML = `
-              <img src="${
-                pattern.thumbnailPath ||
-                "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
-              }" 
+              <img src="${getPatternThumbnailSrc(pattern)}" 
                   class="set-pattern pixel-art-image" 
                   title="${pattern.patternName}">
               <div class="pattern-order">${nextOrder + index}</div>
@@ -5069,10 +5076,7 @@ CURRENT BUG LIST (address later)
           item.setAttribute("data-id", pattern.id);
 
           item.innerHTML = `
-            <img src="${
-              pattern.thumbnailPath ||
-              "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
-            }" 
+            <img src="${getPatternThumbnailSrc(pattern)}" 
                 class="pixel-art-image">
             <div class="pattern-name">${pattern.patternName}</div>
             <div class="pattern-creator">${pattern.creatorName}</div>
@@ -5202,10 +5206,7 @@ CURRENT BUG LIST (address later)
             const pattern = patterns[i];
             thumbnailsHTML += `
               <div class="set-grid-item">
-                <img src="${
-                  pattern.thumbnailPath ||
-                  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
-                }" 
+                <img src="${getPatternThumbnailSrc(pattern)}" 
                   alt="${pattern.patternName}" class="pixel-art-image">
               </div>
             `;
@@ -5230,10 +5231,7 @@ CURRENT BUG LIST (address later)
             const pattern = patterns[i];
             thumbnailsHTML += `
               <div class="set-collection-item">
-                <img src="${
-                  pattern.thumbnailPath ||
-                  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
-                }" 
+                <img src="${getPatternThumbnailSrc(pattern)}" 
                   alt="${pattern.patternName}" class="pixel-art-image">
               </div>
             `;
@@ -5356,10 +5354,7 @@ CURRENT BUG LIST (address later)
             const pattern = patterns[i];
             patternsHTML += `
               <div class="set-detail-pattern" data-id="${pattern.id}">
-                <img src="${
-                  pattern.thumbnailPath ||
-                  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
-                }" 
+                <img src="${getPatternThumbnailSrc(pattern)}" 
                   alt="${pattern.patternName}" class="pixel-art-image">
                 <div class="pattern-name">${pattern.patternName}</div>
               </div>
@@ -5384,10 +5379,7 @@ CURRENT BUG LIST (address later)
           patterns.forEach((pattern) => {
             patternsHTML += `
               <div class="set-detail-pattern" data-id="${pattern.id}">
-                <img src="${
-                  pattern.thumbnailPath ||
-                  "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+"
-                }" 
+                <img src="${getPatternThumbnailSrc(pattern)}" 
                   alt="${pattern.patternName}" class="pixel-art-image">
                 <div class="pattern-name">${pattern.patternName}</div>
               </div>
@@ -7365,7 +7357,9 @@ CURRENT BUG LIST (address later)
                         (pattern) => `
                         <div class="duplicate-pattern" data-id="${pattern.id}">
                             <div class="pattern-preview">
-                                <img src="${pattern.thumbnailPath}" alt="${
+                                <img src="${getPatternThumbnailSrc(
+                                  pattern
+                                )}" alt="${
                           pattern.patternName
                         }" class="pixel-art-image">
                                 <div class="pattern-select">
@@ -7375,15 +7369,25 @@ CURRENT BUG LIST (address later)
                                         id="primary-${pattern.id}" ${
                           set.indexOf(pattern.id) === 0 ? "checked" : ""
                         }>
-                                    <label for="primary-${pattern.id}">Primary</label>
+                                    <label for="primary-${
+                                      pattern.id
+                                    }">Primary</label>
                                 </div>
                             </div>
                             <div class="pattern-details">
-                                <div class="pattern-name">${pattern.patternName}</div>
-                                <div class="pattern-creator">by ${pattern.creatorName}</div>
+                                <div class="pattern-name">${
+                                  pattern.patternName
+                                }</div>
+                                <div class="pattern-creator">by ${
+                                  pattern.creatorName
+                                }</div>
                                 <div class="pattern-metadata">
-                                    <span>File: ${pattern.fileName || "Unknown"}</span>
-                                    <span>Added: ${pattern.dateAdded || "Unknown"}</span>
+                                    <span>File: ${
+                                      pattern.fileName || "Unknown"
+                                    }</span>
+                                    <span>Added: ${
+                                      pattern.dateAdded || "Unknown"
+                                    }</span>
                                     <span>${
                                       pattern.tags.length > 0
                                         ? `Tags: ${pattern.tags.join(", ")}`
