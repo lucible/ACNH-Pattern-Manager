@@ -15,13 +15,6 @@ CURRENT BUG LIST (address later)
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link
-      rel="preload"
-      href="FOT-Seurat-Pro-B.woff"
-      as="font"
-      type="font/woff"
-      crossorigin
-    />
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Animal Crossing Pattern Collection Manager</title>
@@ -423,15 +416,20 @@ CURRENT BUG LIST (address later)
 
       .sidebar-section {
         margin-bottom: 15px;
+        font-size: 0.8rem;
       }
 
       .sidebar-title {
         /* font-family: "Rodin NTLG EB", "Segoe UI", Tahoma, Geneva, Verdana,
           sans-serif; */
         font-weight: bold;
-        margin-bottom: 10px;
-        padding-bottom: 5px;
-        border-bottom: 1px solid var(--border-color);
+        padding: 7px 10px;
+        border-radius: 5px;
+        background: var(--secondary-color);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
 
       .sidebar-list {
@@ -445,6 +443,14 @@ CURRENT BUG LIST (address later)
 
       .sidebar-list li:hover {
         color: var(--primary-color);
+      }
+
+      .sidebar-section .sidebar-list {
+        max-height: 400px;
+        overflow-y: auto;
+        transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.2s ease;
+        margin-left: 10px;
+        margin-top: 5px;
       }
 
       .filter-count {
@@ -1591,6 +1597,23 @@ CURRENT BUG LIST (address later)
         vertical-align: middle;
       }
 
+      .sidebar-title::after {
+        content: "▼";
+        font-size: 0.7rem;
+        transition: transform 0.3s ease;
+      }
+
+      .sidebar-title.collapsed::after {
+        transform: rotate(-90deg);
+      }
+
+      .sidebar-section.collapsed .sidebar-list {
+        max-height: 0;
+        opacity: 0;
+        margin: 0;
+        overflow: hidden;
+      }
+
       @keyframes spin {
         to {
           transform: rotate(360deg);
@@ -1700,17 +1723,13 @@ CURRENT BUG LIST (address later)
             <div class="sidebar-section">
               <h3 class="sidebar-title">🏷️ Tags</h3>
               <ul class="sidebar-list" id="tag-filters">
-                <li>Clothing <span class="filter-count">24</span></li>
-                <li>Designs <span class="filter-count">16</span></li>
-                <li>Blue <span class="filter-count">8</span></li>
-                <li>Path <span class="filter-count">12</span></li>
+                <!-- Tags will be inserted here -->
               </ul>
             </div>
-            <div class="sidebar-section">
-              <h3 class="sidebar-title">🎨 Creators</h3>
+            <div class="sidebar-section collapsed">
+              <h3 class="sidebar-title collapsed">🎨 Creators</h3>
               <ul class="sidebar-list" id="creator-filters">
-                <li>Creator1 <span class="filter-count">10</span></li>
-                <li>Creator2 <span class="filter-count">5</span></li>
+                <!-- Creators will be inserted here -->
               </ul>
             </div>
             <!-- <div class="sidebar-section">
@@ -1949,6 +1968,38 @@ CURRENT BUG LIST (address later)
         addBackToTopButton();
         addCreateCreatorButton();
         initSorting();
+        setupCollapsibleSidebar();
+        setupCreatorSearch();
+        setupSetSearch();
+      }
+
+      function generateCreatorId(creatorName, townName, addTimestamp = false) {
+        // First, normalize the strings to handle unicode variations
+        const normalizedCreator = creatorName.normalize("NFC");
+        const normalizedTown = townName.normalize("NFC");
+
+        // Generate a more consistent ID using base64 encoding
+        // This avoids issues with different character encodings
+        const creatorPart = btoa(
+          unescape(encodeURIComponent(normalizedCreator))
+        )
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+
+        const townPart = btoa(unescape(encodeURIComponent(normalizedTown)))
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+
+        let id = `creator-${creatorPart}-${townPart}`;
+
+        // Add timestamp if requested (for manually created creators)
+        if (addTimestamp) {
+          id += `-${Date.now()}`;
+        }
+
+        return id;
       }
 
       // Load data from localStorage
@@ -2075,6 +2126,152 @@ CURRENT BUG LIST (address later)
             updateActiveFilterDisplay();
           }, 300)
         );
+      }
+
+      // Setup search functionality for creators
+      function setupCreatorSearch() {
+        const searchInput = document.getElementById("creator-search");
+
+        searchInput.addEventListener(
+          "input",
+          debounce(function () {
+            const searchTerm = this.value.trim().toLowerCase();
+
+            // Get all creator cards
+            const creatorCards = document.querySelectorAll(
+              "#creator-list .creator-card"
+            );
+
+            creatorCards.forEach((card) => {
+              const creatorName = card
+                .querySelector("h3")
+                .textContent.toLowerCase();
+              const townName = card
+                .querySelector(".detail-value")
+                .textContent.toLowerCase();
+              const creatorCode =
+                card
+                  .querySelector(".creator-code")
+                  ?.textContent.toLowerCase() || "";
+              const notes =
+                card
+                  .querySelector(".creator-notes")
+                  ?.textContent.toLowerCase() || "";
+
+              // Check if any of the creator's data matches the search term
+              const isMatch =
+                creatorName.includes(searchTerm) ||
+                townName.includes(searchTerm) ||
+                creatorCode.includes(searchTerm) ||
+                notes.includes(searchTerm);
+
+              // Show or hide based on match
+              card.style.display = isMatch ? "flex" : "none";
+            });
+
+            // Show a message if no creators match
+            const noResultsMsg = document.getElementById("no-creator-results");
+            if (
+              !noResultsMsg &&
+              Array.from(creatorCards).every(
+                (card) => card.style.display === "none"
+              )
+            ) {
+              const msg = document.createElement("p");
+              msg.id = "no-creator-results";
+              msg.textContent = "No creators match your search.";
+              document.getElementById("creator-list").appendChild(msg);
+            } else if (
+              noResultsMsg &&
+              Array.from(creatorCards).some(
+                (card) => card.style.display === "flex"
+              )
+            ) {
+              noResultsMsg.remove();
+            }
+          }, 300)
+        );
+
+        // Setup search button click
+        const searchButton = searchInput.nextElementSibling;
+        if (searchButton && searchButton.tagName === "BUTTON") {
+          searchButton.addEventListener("click", function () {
+            // Trigger the input event to perform the search
+            const event = new Event("input", { bubbles: true });
+            searchInput.dispatchEvent(event);
+          });
+        }
+      }
+
+      // Setup search functionality for sets
+      function setupSetSearch() {
+        const searchInput = document.getElementById("set-search");
+
+        searchInput.addEventListener(
+          "input",
+          debounce(function () {
+            const searchTerm = this.value.trim().toLowerCase();
+
+            // Get all set items
+            const setItems = document.querySelectorAll(
+              "#set-manager .set-item"
+            );
+
+            setItems.forEach((item) => {
+              const setName = item
+                .querySelector("h3")
+                .textContent.toLowerCase();
+              const setNotes = item
+                .querySelector("p")
+                .textContent.toLowerCase();
+              const patterns = Array.from(
+                item.querySelectorAll(".set-pattern")
+              ).map(
+                (pattern) => pattern.getAttribute("title")?.toLowerCase() || ""
+              );
+
+              // Check if the set name, notes, or any pattern name matches the search term
+              const isMatch =
+                setName.includes(searchTerm) ||
+                setNotes.includes(searchTerm) ||
+                patterns.some((pattern) => pattern.includes(searchTerm));
+
+              // Show or hide based on match
+              item.style.display = isMatch ? "block" : "none";
+            });
+
+            // Show a message if no sets match
+            const noResultsMsg = document.getElementById("no-set-results");
+            if (
+              !noResultsMsg &&
+              Array.from(setItems).every(
+                (item) => item.style.display === "none"
+              )
+            ) {
+              const msg = document.createElement("p");
+              msg.id = "no-set-results";
+              msg.textContent = "No sets match your search.";
+              document.getElementById("set-manager").appendChild(msg);
+            } else if (
+              noResultsMsg &&
+              Array.from(setItems).some(
+                (item) => item.style.display === "block"
+              )
+            ) {
+              noResultsMsg.remove();
+            }
+          }, 300)
+        );
+
+        // Setup search button click
+        const searchButton = searchInput.nextElementSibling;
+        if (searchButton && searchButton.tagName === "BUTTON") {
+          searchButton.addEventListener("click", function () {
+            // Trigger the input event to perform the search
+            const event = new Event("input", { bubbles: true });
+            searchInput.dispatchEvent(event);
+          });
+        }
       }
 
       function addBackToTopButton() {
@@ -4128,6 +4325,14 @@ CURRENT BUG LIST (address later)
         const setManager = elements.setManager;
         setManager.innerHTML = "";
 
+        // Remove any "no results" message from previous searches
+        const noResultsMsg = document.getElementById("no-set-results");
+        if (noResultsMsg) noResultsMsg.remove();
+
+        // Reset search input
+        const searchInput = document.getElementById("set-search");
+        if (searchInput) searchInput.value = "";
+
         const sets = Object.values(appData.sets);
 
         if (sets.length === 0) {
@@ -5144,6 +5349,14 @@ CURRENT BUG LIST (address later)
       function renderCreators() {
         const creatorList = elements.creatorList;
         creatorList.innerHTML = "";
+
+        // Remove any "no results" message from previous searches
+        const noResultsMsg = document.getElementById("no-creator-results");
+        if (noResultsMsg) noResultsMsg.remove();
+
+        // Reset search input
+        const searchInput = document.getElementById("creator-search");
+        if (searchInput) searchInput.value = "";
 
         const creators = Object.values(appData.creators);
 
@@ -6405,11 +6618,10 @@ CURRENT BUG LIST (address later)
             appData.patterns[patternId] = pattern;
 
             // Create or update creator info
-            const creatorId =
-              "creator-" +
-              pattern.creatorName.toLowerCase().replace(/[^a-z0-9]/g, "-") +
-              "-" +
-              pattern.townName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+            const creatorId = generateCreatorId(
+              pattern.creatorName,
+              pattern.townName
+            );
             console.log("Creator ID:", creatorId);
 
             if (!appData.creators[creatorId]) {
@@ -7492,12 +7704,7 @@ CURRENT BUG LIST (address later)
         // Generate creator ID
         const creatorId =
           document.getElementById("save-creator-btn").getAttribute("data-id") ||
-          "creator-" +
-            name.toLowerCase().replace(/[^a-z0-9]/g, "-") +
-            "-" +
-            town.toLowerCase().replace(/[^a-z0-9]/g, "-") +
-            "-" +
-            Date.now();
+          generateCreatorId(name, town, true);
 
         // Check for existing creator with same name+town
         const existingCreator = Object.values(appData.creators).find(
@@ -7543,6 +7750,31 @@ CURRENT BUG LIST (address later)
         renderPatternGallery();
 
         showNotification("Creator saved successfully");
+      }
+
+      // Setup collapsible sidebar sections
+      function setupCollapsibleSidebar() {
+        const sidebarTitles = document.querySelectorAll(".sidebar-title");
+
+        sidebarTitles.forEach((title) => {
+          // Add click event
+          title.addEventListener("click", () => {
+            const section = title.closest(".sidebar-section");
+            section.classList.toggle("collapsed");
+            title.classList.toggle("collapsed");
+          });
+        });
+
+        // Initialize Creators section as collapsed
+        const creatorsSection = document.querySelector(
+          ".sidebar-section:has(#creator-filters)"
+        );
+        if (creatorsSection) {
+          creatorsSection.classList.add("collapsed");
+          creatorsSection
+            .querySelector(".sidebar-title")
+            .classList.add("collapsed");
+        }
       }
 
       // Show notification
