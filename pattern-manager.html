@@ -8,10 +8,11 @@ CURRENT BUG LIST (address later)
 [ ] Fix selected "Select" button CSS
 [ ] Hover transitions on selected pattern cards vs unselected:
       selected cards clonk down while unselected cards ease down. how do that on selected cards?!
-[ ] Need to fix .action-bar > div:last-child being applied on the creators tab so that
-      the creators tab search bar doesn't look different than the others
-[ ] Rodin Extra Bold is TOO much for the buttons. Convert Rodin Bold to use instead.
 [ ] Rename the farts css class
+[ ] Make Tags and Creators sections of the sidebar collapsable & start with Creators collapsed
+[ ] Add sort by # of patterns and sort alphabetical options to the Creators tab
+[ ] Fix the CSS on the selected tags section
+[ ] Fix the CSS on the creators' tab
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -63,7 +64,7 @@ CURRENT BUG LIST (address later)
 
       @font-face {
         font-family: "Rodin NTLG EB";
-        src: url("fonts/nintendoP_RodinNTLG-EB_003.woff2") format("woff2");
+        src: url("fonts/FOT-RodinNTLGProB.woff2") format("woff2");
         font-weight: bold;
         font-style: normal;
         font-display: swap;
@@ -162,7 +163,7 @@ CURRENT BUG LIST (address later)
         padding: 5px 10px;
         cursor: pointer;
         border-bottom: 2px solid transparent;
-        transition: color .2s,background-color .2s;
+        transition: color 0.2s, background-color 0.2s;
       }
 
       .nav-tabs li:hover {
@@ -195,7 +196,7 @@ CURRENT BUG LIST (address later)
       }
 
       /* Properly align the control buttons group */
-      .action-bar > div:last-child {
+      .action-bar > div:last-child:not(.search-bar) {
         display: flex;
         align-items: center;
         gap: 10px;
@@ -204,7 +205,7 @@ CURRENT BUG LIST (address later)
 
       .action-bar input,
       .action-bar button {
-        height: 40px; /* Consistent height for all elements */
+        height: 34px; /* Consistent height for all elements */
       }
 
       .action-bar input {
@@ -270,6 +271,8 @@ CURRENT BUG LIST (address later)
         border-bottom: 2px solid var(--primary-color);
         transition: transform 0.2s, box-shadow 0.2s;
         width: 200px;
+        display: flex;
+        flex-direction: column;
       }
 
       .pattern-card:hover {
@@ -381,8 +384,12 @@ CURRENT BUG LIST (address later)
         border-bottom: 2px solid var(--primary-color);
       }
 
+      .sidebar > div:last-child {
+        margin-bottom: 0;
+      }
+
       .sidebar-section {
-        margin-bottom: 20px;
+        margin-bottom: 15px;
       }
 
       .sidebar-title {
@@ -1345,7 +1352,7 @@ CURRENT BUG LIST (address later)
       .pattern-card.selected {
         box-shadow: 0 0 0 3px var(--primary-color);
         border: none;
-        transition: border .2s,box-shadow .2s;
+        transition: border 0.2s, box-shadow 0.2s;
       }
       .pattern-select {
         position: absolute;
@@ -1389,6 +1396,186 @@ CURRENT BUG LIST (address later)
       .btn-small {
         padding: 6px 12px;
         font-size: 0.9rem;
+      }
+
+      .creator-rank {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        color: white;
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+      .creator-rank.verified {
+        background-color: #2ecc71; /* Green */
+      }
+      .creator-rank.unknown {
+        background-color: #3498db; /* Blue */
+      }
+      .creator-rank.plagiarist {
+        background-color: #e74c3c; /* Red */
+      }
+      .verified-badge,
+      .plagiarist-badge {
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.8rem;
+        width: 100%;
+        padding: 2px 15px;
+        font-weight: bold;
+      }
+      .verified-badge {
+        /* border-top: 2px solid #2ecc71; */
+        border-bottom: 2px solid #2ecc71;
+      }
+      .plagiarist-badge {
+        /* border-top: 2px solid #e74c3c; */
+        border-bottom: 2px solid #e74c3c;
+      }
+      .creator-code {
+        font-family: monospace;
+        background-color: var(--secondary-color);
+        padding: 2px 4px;
+        border-radius: 4px;
+        margin-left: 5px;
+      }
+      .creator-card {
+        display: flex;
+        flex-direction: column;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 15px;
+        margin-bottom: 15px;
+      }
+      .creator-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      .creator-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .creator-detail {
+        display: flex;
+        flex-direction: column;
+        background-color: var(--secondary-color);
+        padding: 8px 12px;
+        border-radius: 5px;
+        flex: 1;
+        min-width: 150px;
+      }
+      .detail-label {
+        font-size: 0.8rem;
+        color: #666;
+      }
+      .detail-value {
+        font-weight: bold;
+        margin-top: 3px;
+      }
+      .creator-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .create-creator-btn {
+        margin-left: auto;
+      }
+
+      .creator-card {
+        background-color: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .creator-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .creator-rank {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        color: white;
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+
+      .creator-rank.verified {
+        background-color: #2ecc71;
+      }
+
+      .creator-rank.unknown {
+        background-color: #3498db;
+      }
+
+      .creator-rank.plagiarist {
+        background-color: #e74c3c;
+      }
+
+      .creator-code {
+        font-family: monospace;
+        background-color: var(--secondary-color);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+
+      .creator-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .creator-detail {
+        background-color: var(--secondary-color);
+        padding: 10px;
+        border-radius: 5px;
+        flex: 1;
+        min-width: 100px;
+      }
+
+      .detail-label {
+        font-size: 0.8rem;
+        color: #666;
+        margin-bottom: 5px;
+      }
+
+      .detail-value {
+        font-weight: bold;
+      }
+
+      .creator-notes {
+        background-color: var(--secondary-color);
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        font-style: italic;
+        color: #555;
+      }
+
+      .creator-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      /* Style for pattern badges */
+      .pattern-name .verified-badge,
+      .pattern-name .plagiarist-badge {
+        font-size: 1rem;
+        vertical-align: middle;
       }
 
       @keyframes spin {
@@ -1446,9 +1633,6 @@ CURRENT BUG LIST (address later)
         </div>
         <div class="header-actions">
           <button id="import-btn" class="btn">Import Patterns</button>
-          <button id="export-btn" class="btn btn-secondary">
-            Export Metadata
-          </button>
         </div>
       </header>
 
@@ -1522,13 +1706,13 @@ CURRENT BUG LIST (address later)
                 <li>Creator2 <span class="filter-count">5</span></li>
               </ul>
             </div>
-            <div class="sidebar-section">
+            <!-- <div class="sidebar-section">
               <h3 class="sidebar-title">Sets</h3>
               <ul class="sidebar-list" id="set-filters">
                 <li>Star Collection <span class="filter-count">3</span></li>
                 <li>Path Set <span class="filter-count">6</span></li>
               </ul>
-            </div>
+            </div> -->
           </div>
 
           <div class="content-area">
@@ -1756,6 +1940,7 @@ CURRENT BUG LIST (address later)
         renderSidebarFilters();
         enhanceFiltering();
         addBackToTopButton();
+        addCreateCreatorButton();
         initSorting();
       }
 
@@ -1865,7 +2050,6 @@ CURRENT BUG LIST (address later)
           elements.importModal.style.display = "flex";
         });
 
-        elements.exportBtn.addEventListener("click", exportMetadata);
         elements.createSetBtn.addEventListener("click", () => {
           elements.setModal.style.display = "flex";
         });
@@ -2568,6 +2752,26 @@ CURRENT BUG LIST (address later)
             "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
         }
 
+        // Get creator info to determine if we need to add rank badges
+        let creatorBadge = "";
+        const creatorId = Object.keys(appData.creators).find((id) => {
+          return (
+            appData.creators[id].name === pattern.creatorName &&
+            appData.creators[id].townName === pattern.townName
+          );
+        });
+
+        if (creatorId) {
+          const creator = appData.creators[creatorId];
+          if (creator.rank === "verified") {
+            creatorBadge =
+              '<div class="verified-badge" title="Verified Creator">🌟 Verified</div>';
+          } else if (creator.rank === "plagiarist") {
+            creatorBadge =
+              '<span class="plagiarist-badge" title="Plagiarized Pattern">⚠️ Plagiarized</span>';
+          }
+        }
+
         // Selection checkbox (only visible in selection mode)
         const selectionCheckbox = appData.selectionMode
           ? `<div class="pattern-select">
@@ -2584,8 +2788,11 @@ CURRENT BUG LIST (address later)
           pattern.patternName
         }" 
               onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+'">
-          <div class="pattern-info">
-            <div class="pattern-name">${pattern.patternName}</div>
+            ${creatorBadge}
+              <div class="pattern-info">
+            <div class="pattern-name">${
+              pattern.patternName
+            }</div>
             <div class="pattern-creator">by ${pattern.creatorName} of ${
           pattern.townName
         }</div>
@@ -3256,7 +3463,7 @@ CURRENT BUG LIST (address later)
 
         // Similar implementation for creators and sets filters with the same pattern
         renderCreatorFilters();
-        renderSetFilters();
+        // renderSetFilters();
 
         // Update the active filter display after rendering all filters
         updateActiveFilterDisplay();
@@ -4974,99 +5181,106 @@ CURRENT BUG LIST (address later)
 
         if (creators.length === 0) {
           creatorList.innerHTML =
-            "<p>No creators available. Import patterns to see creators.</p>";
+            "<p>No creators available. Import patterns to see creators or add one manually using the 'Add Creator' button.</p>";
           return;
         }
 
         creators.forEach((creator) => {
-          const creatorItem = document.createElement("div");
-          creatorItem.className = "creator-item";
+          const creatorCard = document.createElement("div");
+          creatorCard.className = "creator-card";
 
           // Count patterns by this creator
           const patternCount = creator.patterns.length;
           const completionPercentage = calculateCompletionPercentage(creator);
 
-          // Create completion indicator
-          let completionStatus = "";
+          // Create rank badge
+          let rankBadge = "";
+          if (creator.rank === "verified") {
+            rankBadge =
+              '<span class="creator-rank verified">Verified 🌟</span>';
+          } else if (creator.rank === "plagiarist") {
+            rankBadge =
+              '<span class="creator-rank plagiarist">Plagiarist ⚠️</span>';
+          } else {
+            rankBadge = '<span class="creator-rank unknown">Unknown</span>';
+          }
+
+          // Create completion badge
+          let completionBadge = "";
           if (creator.isComplete) {
-            completionStatus =
+            completionBadge =
               '<span class="completion-badge complete">Complete</span>';
           } else if (creator.totalPatterns) {
             const percentage = Math.round(completionPercentage);
-            completionStatus = `<span class="completion-badge" style="background-color: ${getCompletionColor(
+            completionBadge = `<span class="completion-badge" style="background-color: ${getCompletionColor(
               completionPercentage
             )}">${percentage}%</span>`;
           }
 
           const html = `
-            <div class="creator-info">
-                <h3>${creator.name} ${completionStatus}</h3>
-                <p>Town: ${creator.townName}</p>
-                <p>${creator.notes || ""}</p>
+            <div class="creator-header">
+              <h3>${creator.name} ${rankBadge} ${completionBadge}</h3>
+              <div class="creator-code-container">
+                ${
+                  creator.creatorCode
+                    ? `<span class="creator-code">${creator.creatorCode}</span>`
+                    : ""
+                }
+              </div>
             </div>
-            <div class="creator-stats">
-                <div>
-                    <div>Backed Up</div>
-                    <div>${patternCount}</div>
-                </div>
-                <div>
-                    <div>Total</div>
-                    <div>${creator.totalPatterns || "Unknown"}</div>
-                </div>
-                <div>
-                    <div>Last Updated</div>
-                    <div>${getLastUpdatedDate(creator)}</div>
-                </div>
+            
+            <div class="creator-details">
+              <div class="creator-detail">
+                <div class="detail-label">Town</div>
+                <div class="detail-value">${creator.townName}</div>
+              </div>
+              
+              <div class="creator-detail">
+                <div class="detail-label">Patterns</div>
+                <div class="detail-value">${patternCount} / ${
+            creator.totalPatterns || "?"
+          }</div>
+              </div>
+              
+              <div class="creator-detail">
+                <div class="detail-label">Last Updated</div>
+                <div class="detail-value">${getLastUpdatedDate(creator)}</div>
+              </div>
             </div>
+            
+            ${
+              creator.notes
+                ? `<div class="creator-notes">${creator.notes}</div>`
+                : ""
+            }
+            
             <div class="creator-actions">
-                <button class="btn btn-secondary" data-action="view" data-id="${
-                  creator.id
-                }">View Patterns</button>
-                <button class="btn btn-secondary" data-action="edit" data-id="${
-                  creator.id
-                }">Edit Info</button>
+              <button class="btn btn-secondary" data-action="view" data-id="${
+                creator.id
+              }">View Patterns</button>
+              <button class="btn btn-secondary" data-action="edit" data-id="${
+                creator.id
+              }">Edit Info</button>
             </div>
-        `;
+          `;
 
-          creatorItem.innerHTML = html;
+          creatorCard.innerHTML = html;
 
           // Add event listeners for buttons
-          creatorItem
+          creatorCard
             .querySelector('[data-action="view"]')
             .addEventListener("click", () => {
               viewCreatorPatterns(creator.id);
             });
 
-          creatorItem
+          creatorCard
             .querySelector('[data-action="edit"]')
             .addEventListener("click", () => {
               editCreator(creator.id);
             });
 
-          creatorList.appendChild(creatorItem);
+          creatorList.appendChild(creatorCard);
         });
-
-        // Add styles for completion badges
-        const existingStyle = document.getElementById("creator-styles");
-        if (!existingStyle) {
-          const style = document.createElement("style");
-          style.id = "creator-styles";
-          style.textContent = `
-            .completion-badge {
-                display: inline-block;
-                padding: 2px 6px;
-                border-radius: 10px;
-                font-size: 0.7rem;
-                color: white;
-                margin-left: 8px;
-                vertical-align: middle;
-            }
-            .completion-badge.complete {
-                background-color: var(--success-color);
-            }
-        `;
-          document.head.appendChild(style);
-        }
       }
 
       // View creator patterns
@@ -5110,130 +5324,224 @@ CURRENT BUG LIST (address later)
         modal.style.display = "flex";
 
         modal.innerHTML = `
-        <div class="modal">
+          <div class="modal">
             <button class="modal-close">&times;</button>
             <h2 class="modal-title">Edit Creator Information</h2>
             <div class="creator-edit-form">
-                <div class="form-group">
-                    <label for="creator-name-input">Creator Name</label>
-                    <input type="text" id="creator-name-input" value="${
-                      creator.name
-                    }" readonly>
-                    <p class="help-text">Creator name cannot be changed as it comes from the pattern files.</p>
-                </div>
-                <div class="form-group">
-                    <label for="creator-town-input">Town Name</label>
-                    <input type="text" id="creator-town-input" value="${
-                      creator.townName
-                    }" readonly>
-                    <p class="help-text">Town name cannot be changed as it comes from the pattern files.</p>
-                </div>
-                <div class="form-group">
-                    <label for="creator-total-input">Total Patterns</label>
-                    <input type="number" id="creator-total-input" min="0" value="${
-                      creator.totalPatterns || 0
-                    }">
-                    <p class="help-text">Set the total number of patterns this creator has made (if known).</p>
-                </div>
-                <div class="form-group">
-                    <label for="creator-complete-input">Collection Status</label>
-                    <select id="creator-complete-input">
-                        <option value="false" ${
-                          !creator.isComplete ? "selected" : ""
-                        }>Incomplete</option>
-                        <option value="true" ${
-                          creator.isComplete ? "selected" : ""
-                        }>Complete</option>
-                    </select>
-                    <p class="help-text">Mark whether you have collected all patterns from this creator.</p>
-                </div>
-                <div class="form-group">
-                    <label for="creator-notes-input">Notes</label>
-                    <textarea id="creator-notes-input" rows="4">${
-                      creator.notes || ""
-                    }</textarea>
-                </div>
-                
-                <div class="creator-stats">
-                    <h3>Collection Statistics</h3>
-                    <div class="stats-container">
-                        <div class="stat-item">
-                            <div class="stat-label">Patterns Backed Up</div>
-                            <div class="stat-value">${
-                              creator.patterns.length
-                            }</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Completion Rate</div>
-                            <div class="stat-value completion-rate">
-                                ${calculateCompletionRate(creator)}
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">Last Updated</div>
-                            <div class="stat-value">
-                                ${getLastUpdatedDate(creator)}
-                            </div>
-                        </div>
+              <div class="form-group">
+                <label for="creator-name-input">Creator Name</label>
+                <input type="text" id="creator-name-input" value="${
+                  creator.name
+                }" readonly>
+                <p class="help-text">Creator name cannot be changed as it comes from the pattern files.</p>
+              </div>
+              
+              <div class="form-group">
+                <label for="creator-town-input">Town Name</label>
+                <input type="text" id="creator-town-input" value="${
+                  creator.townName
+                }" readonly>
+                <p class="help-text">Town name cannot be changed as it comes from the pattern files.</p>
+              </div>
+              
+              <div class="form-group">
+                <label for="creator-code-input">Creator Code</label>
+                <input type="text" id="creator-code-input" value="${
+                  creator.creatorCode || ""
+                }" 
+                      placeholder="MA-####-####-####" pattern="MA-\\d{4}-\\d{4}-\\d{4}">
+                <p class="help-text">Format: MA-####-####-#### (e.g., MA-1234-5678-9012)</p>
+              </div>
+              
+              <div class="form-group">
+                <label for="creator-rank-input">Creator Rank</label>
+                <select id="creator-rank-input">
+                  <option value="unknown" ${
+                    creator.rank !== "verified" && creator.rank !== "plagiarist"
+                      ? "selected"
+                      : ""
+                  }>
+                    Unknown (Default)
+                  </option>
+                  <option value="verified" ${
+                    creator.rank === "verified" ? "selected" : ""
+                  }>
+                    Verified (Original Creator)
+                  </option>
+                  <option value="plagiarist" ${
+                    creator.rank === "plagiarist" ? "selected" : ""
+                  }>
+                    Plagiarist (Copies Others' Work)
+                  </option>
+                </select>
+                <p class="help-text">Select the appropriate rank based on your confidence in the creator's originality.</p>
+              </div>
+              
+              <div class="form-group">
+                <label for="creator-total-input">Total Patterns</label>
+                <input type="number" id="creator-total-input" min="0" value="${
+                  creator.totalPatterns || 0
+                }">
+                <p class="help-text">Set the total number of patterns this creator has made (if known).</p>
+              </div>
+              
+              <div class="form-group">
+                <label for="creator-complete-input">Collection Status</label>
+                <select id="creator-complete-input">
+                  <option value="false" ${
+                    !creator.isComplete ? "selected" : ""
+                  }>Incomplete</option>
+                  <option value="true" ${
+                    creator.isComplete ? "selected" : ""
+                  }>Complete</option>
+                </select>
+                <p class="help-text">Mark whether you have collected all patterns from this creator.</p>
+              </div>
+              
+              <div class="form-group">
+                <label for="creator-notes-input">Notes</label>
+                <textarea id="creator-notes-input" rows="4">${
+                  creator.notes || ""
+                }</textarea>
+              </div>
+              
+              <div class="creator-stats">
+                <h3>Collection Statistics</h3>
+                <div class="stats-container">
+                  <div class="stat-item">
+                    <div class="stat-label">Patterns Backed Up</div>
+                    <div class="stat-value">${creator.patterns.length}</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-label">Completion Rate</div>
+                    <div class="stat-value completion-rate" style="color: ${getCompletionColor(
+                      calculateCompletionPercentage(creator)
+                    )}">
+                      ${calculateCompletionRate(creator)}
                     </div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-label">Last Updated</div>
+                    <div class="stat-value">
+                      ${getLastUpdatedDate(creator)}
+                    </div>
+                  </div>
                 </div>
-                
-                <button class="btn" id="save-creator-btn">Save Changes</button>
+              </div>
+              
+              <div class="form-actions">
+                <button class="btn btn-secondary" id="view-patterns-btn">View Patterns</button>
+                <button class="btn" id="save-creator-btn" data-id="${creatorId}">Save Changes</button>
+              </div>
             </div>
-        </div>
-    `;
+          </div>
+        `;
 
         document.body.appendChild(modal);
 
-        // Add style with variable info
-        const style = document.createElement("style");
-        style.textContent = `
-                .completion-rate {
-            color: ${getCompletionColor(
-              calculateCompletionPercentage(creator)
-            )};
-        }
-            `;
-        document.body.appendChild(style);
+        // Add Creator Code formatter
+        const creatorCodeInput = document.getElementById("creator-code-input");
+        creatorCodeInput.addEventListener("input", function (e) {
+          let value = this.value.replace(/[^A-Ma-m0-9]/g, "").toUpperCase();
+
+          // Make sure it starts with MA
+          if (value.length >= 2 && value.substring(0, 2) !== "MA") {
+            value =
+              "MA" + value.substring(value.length - Math.min(value.length, 12));
+          } else if (value.length < 2) {
+            value = value.padStart(2, "M");
+          }
+
+          // Format with dashes
+          if (value.length > 2) {
+            let formatted = value.substring(0, 2) + "-";
+
+            // Add first group of digits
+            const firstGroup = value.substring(2, Math.min(6, value.length));
+            formatted += firstGroup;
+
+            // Add second group if we have it
+            if (value.length > 6) {
+              formatted += "-" + value.substring(6, Math.min(10, value.length));
+
+              // Add third group if we have it
+              if (value.length > 10) {
+                formatted +=
+                  "-" + value.substring(10, Math.min(14, value.length));
+              }
+            }
+
+            value = formatted;
+          }
+
+          this.value = value;
+        });
 
         // Close button functionality
         modal.querySelector(".modal-close").addEventListener("click", () => {
           document.body.removeChild(modal);
-          document.body.removeChild(style);
         });
+
+        // View patterns button
+        document
+          .getElementById("view-patterns-btn")
+          .addEventListener("click", () => {
+            document.body.removeChild(modal);
+            viewCreatorPatterns(creatorId);
+          });
 
         // Save button
-        const saveBtn = modal.querySelector("#save-creator-btn");
-        saveBtn.addEventListener("click", () => {
-          // Get values from form
-          const totalPatterns =
-            parseInt(modal.querySelector("#creator-total-input").value) || 0;
-          const isComplete =
-            modal.querySelector("#creator-complete-input").value === "true";
-          const notes = modal
-            .querySelector("#creator-notes-input")
-            .value.trim();
+        document
+          .getElementById("save-creator-btn")
+          .addEventListener("click", () => {
+            // Get values from form
+            const creatorCode = document
+              .getElementById("creator-code-input")
+              .value.trim();
+            const rank = document.getElementById("creator-rank-input").value;
+            const totalPatterns =
+              parseInt(document.getElementById("creator-total-input").value) ||
+              0;
+            const isComplete =
+              document.getElementById("creator-complete-input").value ===
+              "true";
+            const notes = document
+              .getElementById("creator-notes-input")
+              .value.trim();
 
-          // Update creator object
-          creator.totalPatterns = totalPatterns;
-          creator.isComplete = isComplete;
-          creator.notes = notes;
+            // Validate creator code format if provided
+            if (creatorCode && !creatorCode.match(/^MA-\d{4}-\d{4}-\d{4}$/)) {
+              showNotification(
+                "Creator Code must be in format MA-####-####-####",
+                "error"
+              );
+              return;
+            }
 
-          // Save to localStorage
-          saveDataToLocalStorage();
+            // Update creator object
+            creator.creatorCode = creatorCode;
+            creator.rank = rank;
+            creator.totalPatterns = totalPatterns;
+            creator.isComplete = isComplete;
+            creator.notes = notes;
 
-          // Update UI
-          renderCreators();
+            // Save to localStorage
+            saveDataToLocalStorage();
 
-          // Close modal
-          document.body.removeChild(modal);
-          document.body.removeChild(style);
+            // Update UI
+            renderCreators();
 
-          showNotification("Creator information updated successfully");
-        });
+            // Update pattern gallery to refresh creator badges
+            renderPatternGallery();
+
+            // Close modal
+            document.body.removeChild(modal);
+
+            showNotification("Creator information updated successfully");
+          });
 
         // Update completion rate when total patterns changes
-        const totalInput = modal.querySelector("#creator-total-input");
+        const totalInput = document.getElementById("creator-total-input");
         const completionRate = modal.querySelector(".completion-rate");
 
         totalInput.addEventListener("input", () => {
@@ -5248,29 +5556,13 @@ CURRENT BUG LIST (address later)
         // Automatically mark as complete if backed up equals total
         totalInput.addEventListener("change", () => {
           const total = parseInt(totalInput.value) || 0;
-          const completeSelect = modal.querySelector("#creator-complete-input");
+          const completeSelect = document.getElementById(
+            "creator-complete-input"
+          );
 
           if (total > 0 && total <= creator.patterns.length) {
             completeSelect.value = "true";
           }
-        });
-
-        // View patterns button
-        const viewPatternsBtn = document.createElement("button");
-        viewPatternsBtn.className = "btn btn-secondary";
-        viewPatternsBtn.textContent = "View Patterns";
-        viewPatternsBtn.style.marginRight = "10px";
-
-        // Insert before save button
-        saveBtn.parentNode.insertBefore(viewPatternsBtn, saveBtn);
-
-        viewPatternsBtn.addEventListener("click", () => {
-          // Close modal first
-          document.body.removeChild(modal);
-          document.body.removeChild(style);
-
-          // View creator patterns
-          viewCreatorPatterns(creatorId);
         });
       }
 
@@ -5373,7 +5665,7 @@ CURRENT BUG LIST (address later)
         const settingsBtn = document.createElement("button");
         settingsBtn.id = "settings-btn";
         settingsBtn.className = "btn btn-secondary";
-        settingsBtn.textContent = "App Settings";
+        settingsBtn.textContent = "Settings";
         header.querySelector("div:last-child").prepend(settingsBtn);
 
         // Create settings modal
@@ -5421,6 +5713,15 @@ CURRENT BUG LIST (address later)
         </div>
         <div id="storage-switch-warning" class="warning-message" style="display: none;">
           Switching storage methods may take some time if you have many patterns.
+        </div>
+      </div>
+      
+      <div class="settings-section">
+        <h3>Data Management</h3>
+        <p class="help-text">Import or export pattern metadata including tags, sets, and creator information.</p>
+        <div class="form-group" style="display: flex; gap: 10px;">
+          <button id="import-metadata-btn-settings" class="btn btn-secondary">Import Metadata</button>
+          <button id="export-metadata-btn-settings" class="btn btn-secondary">Export Metadata</button>
         </div>
       </div>
       
@@ -5493,6 +5794,30 @@ CURRENT BUG LIST (address later)
 
             settingsModal.style.display = "none";
             renderPatternGallery();
+          });
+
+        // Add event listeners for the import and export metadata buttons
+        document
+          .getElementById("import-metadata-btn-settings")
+          .addEventListener("click", () => {
+            // Close settings modal first
+            settingsModal.style.display = "none";
+
+            // Then show import metadata modal
+            document.getElementById("metadata-file").value = "";
+            document.getElementById("metadata-import-status").innerHTML = "";
+            document.getElementById("import-metadata-modal").style.display =
+              "flex";
+          });
+
+        document
+          .getElementById("export-metadata-btn-settings")
+          .addEventListener("click", () => {
+            // Close settings modal first
+            settingsModal.style.display = "none";
+
+            // Then export metadata
+            exportMetadata();
           });
       }
 
@@ -6124,6 +6449,8 @@ CURRENT BUG LIST (address later)
                 id: creatorId,
                 name: pattern.creatorName,
                 townName: pattern.townName,
+                creatorCode: null,
+                rank: "unknown",
                 patterns: [],
                 totalBackedUp: 0,
                 totalPatterns: 0,
@@ -6219,59 +6546,41 @@ CURRENT BUG LIST (address later)
 
       // Add import metadata functionality
       function setupMetadataImport() {
-        // Add import metadata button next to export button
-        const exportBtn = document.getElementById("export-btn");
-        const importMetadataBtn = document.createElement("button");
-        importMetadataBtn.id = "import-metadata-btn";
-        importMetadataBtn.className = "btn btn-secondary";
-        importMetadataBtn.textContent = "Import Metadata";
-        importMetadataBtn.style.marginRight = "10px";
-
-        // Insert before export button
-        exportBtn.parentNode.insertBefore(importMetadataBtn, exportBtn);
-
         // Create import metadata modal
         const importMetadataModal = document.createElement("div");
         importMetadataModal.className = "modal-backdrop";
         importMetadataModal.id = "import-metadata-modal";
 
         importMetadataModal.innerHTML = `
-        <div class="modal">
-            <button class="modal-close">&times;</button>
-            <h2 class="modal-title">Import Pattern Metadata</h2>
-            <div class="form-group">
-                <label for="metadata-file">Select Metadata JSON File</label>
-                <input type="file" id="metadata-file" accept=".json">
-            </div>
-            <div id="metadata-import-status"></div>
-            <div class="import-options">
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="merge-metadata" checked>
-                        Merge with existing data (recommended)
-                    </label>
-                    <p class="help-text">If unchecked, all existing metadata will be replaced with the imported data.</p>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="update-existing" checked>
-                        Update existing patterns
-                    </label>
-                    <p class="help-text">If unchecked, only new patterns will be added.</p>
-                </div>
-            </div>
-            <button class="btn" id="start-metadata-import-btn">Import Metadata</button>
+    <div class="modal">
+        <button class="modal-close">&times;</button>
+        <h2 class="modal-title">Import Pattern Metadata</h2>
+        <div class="form-group">
+            <label for="metadata-file">Select Metadata JSON File</label>
+            <input type="file" id="metadata-file" accept=".json">
         </div>
-    `;
+        <div id="metadata-import-status"></div>
+        <div class="import-options">
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="merge-metadata" checked>
+                    Merge with existing data (recommended)
+                </label>
+                <p class="help-text">If unchecked, all existing metadata will be replaced with the imported data.</p>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="update-existing" checked>
+                    Update existing patterns
+                </label>
+                <p class="help-text">If unchecked, only new patterns will be added.</p>
+            </div>
+        </div>
+        <button class="btn" id="start-metadata-import-btn">Import Metadata</button>
+    </div>
+  `;
 
         document.body.appendChild(importMetadataModal);
-
-        // Add event listener for import button
-        importMetadataBtn.addEventListener("click", () => {
-          document.getElementById("metadata-file").value = "";
-          document.getElementById("metadata-import-status").innerHTML = "";
-          importMetadataModal.style.display = "flex";
-        });
 
         // Close button event listener
         importMetadataModal
@@ -7046,6 +7355,226 @@ CURRENT BUG LIST (address later)
         scanForDuplicates();
 
         showNotification("Patterns marked as related");
+      }
+
+      // Function to add the "Add Creator" button to the creator tab
+      function addCreateCreatorButton() {
+        const creatorActionBar = document.querySelector(
+          "#creators .action-bar"
+        );
+        const createBtn = document.createElement("button");
+        createBtn.id = "create-creator-btn";
+        createBtn.className = "btn create-creator-btn";
+        createBtn.textContent = "Add Creator";
+        createBtn.addEventListener("click", openCreateCreatorModal);
+
+        creatorActionBar.appendChild(createBtn);
+      }
+
+      // 4. Create the Creator form modal
+      function createCreatorModal() {
+        const modal = document.createElement("div");
+        modal.className = "modal-backdrop";
+        modal.id = "creator-modal";
+
+        modal.innerHTML = `
+          <div class="modal">
+            <button class="modal-close">&times;</button>
+            <h2 class="modal-title" id="creator-modal-title">Add New Creator</h2>
+            
+            <div class="form-group">
+              <label for="creator-name-input">Creator Name*</label>
+              <input type="text" id="creator-name-input" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="creator-town-input">Town Name*</label>
+              <input type="text" id="creator-town-input" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="creator-code-input">Creator Code</label>
+              <input type="text" id="creator-code-input" placeholder="MA-####-####-####" pattern="MA-\\d{4}-\\d{4}-\\d{4}">
+              <p class="help-text">Format: MA-####-####-#### (e.g., MA-1234-5678-9012)</p>
+            </div>
+            
+            <div class="form-group">
+              <label for="creator-rank-input">Creator Rank</label>
+              <select id="creator-rank-input">
+                <option value="unknown">Unknown (Default)</option>
+                <option value="verified">Verified (Original Creator)</option>
+                <option value="plagiarist">Plagiarist (Copies Others' Work)</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="creator-total-input">Total Patterns</label>
+              <input type="number" id="creator-total-input" min="0" value="0">
+              <p class="help-text">Set the total number of patterns this creator has made (if known).</p>
+            </div>
+            
+            <div class="form-group">
+              <label for="creator-complete-input">Collection Status</label>
+              <select id="creator-complete-input">
+                <option value="false" selected>Incomplete</option>
+                <option value="true">Complete</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="creator-notes-input">Notes</label>
+              <textarea id="creator-notes-input" rows="4"></textarea>
+            </div>
+            
+            <button class="btn" id="save-creator-btn">Save Creator</button>
+          </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Set up the close button
+        modal.querySelector(".modal-close").addEventListener("click", () => {
+          document.body.removeChild(modal);
+        });
+
+        // Set up the save button
+        modal
+          .querySelector("#save-creator-btn")
+          .addEventListener("click", saveCreator);
+
+        // Add creator code formatter
+        const creatorCodeInput = modal.querySelector("#creator-code-input");
+        creatorCodeInput.addEventListener("input", formatCreatorCode);
+
+        return modal;
+      }
+
+      // 5. Format creator code as user types (MA-####-####-####)
+      function formatCreatorCode(e) {
+        const input = e.target;
+        let value = input.value.replace(/[^A-Ma-m0-9]/g, "").toUpperCase();
+
+        // Make sure it starts with MA
+        if (value.length >= 2 && value.substring(0, 2) !== "MA") {
+          value =
+            "MA" + value.substring(value.length - Math.min(value.length, 12));
+        } else if (value.length < 2) {
+          value = value.padStart(2, "M");
+        }
+
+        // Format with dashes
+        if (value.length > 2) {
+          let formatted = value.substring(0, 2) + "-";
+
+          // Add first group of digits
+          const firstGroup = value.substring(2, 6);
+          formatted += firstGroup;
+
+          // Add second group if we have it
+          if (value.length > 6) {
+            formatted += "-" + value.substring(6, 10);
+
+            // Add third group if we have it
+            if (value.length > 10) {
+              formatted += "-" + value.substring(10, 14);
+            }
+          }
+
+          value = formatted;
+        }
+
+        input.value = value;
+      }
+
+      // 6. Open Creator Modal for adding a new creator
+      function openCreateCreatorModal() {
+        const modal = createCreatorModal();
+        modal.style.display = "flex";
+        document.getElementById("creator-modal-title").textContent =
+          "Add New Creator";
+        document.getElementById("creator-name-input").focus();
+      }
+
+      // 7. Save a new or edited creator
+      function saveCreator() {
+        const nameInput = document.getElementById("creator-name-input");
+        const townInput = document.getElementById("creator-town-input");
+
+        // Validate required fields
+        if (!nameInput.value.trim() || !townInput.value.trim()) {
+          showNotification(
+            "Creator Name and Town Name are required fields",
+            "error"
+          );
+          return;
+        }
+
+        const name = nameInput.value.trim();
+        const town = townInput.value.trim();
+        const code = document.getElementById("creator-code-input").value.trim();
+        const rank = document.getElementById("creator-rank-input").value;
+        const total =
+          parseInt(document.getElementById("creator-total-input").value) || 0;
+        const isComplete =
+          document.getElementById("creator-complete-input").value === "true";
+        const notes = document
+          .getElementById("creator-notes-input")
+          .value.trim();
+
+        // Generate creator ID
+        const creatorId =
+          document.getElementById("save-creator-btn").getAttribute("data-id") ||
+          "creator-" +
+            name.toLowerCase().replace(/[^a-z0-9]/g, "-") +
+            "-" +
+            town.toLowerCase().replace(/[^a-z0-9]/g, "-") +
+            "-" +
+            Date.now();
+
+        // Check for existing creator with same name+town
+        const existingCreator = Object.values(appData.creators).find(
+          (c) =>
+            c.name.toLowerCase() === name.toLowerCase() &&
+            c.townName.toLowerCase() === town.toLowerCase() &&
+            c.id !== creatorId
+        );
+
+        if (existingCreator) {
+          showNotification(
+            "A creator with this name and town already exists",
+            "error"
+          );
+          return;
+        }
+
+        // Create or update the creator
+        appData.creators[creatorId] = {
+          id: creatorId,
+          name: name,
+          townName: town,
+          creatorCode: code,
+          rank: rank,
+          patterns: appData.creators[creatorId]?.patterns || [],
+          totalBackedUp: appData.creators[creatorId]?.totalBackedUp || 0,
+          totalPatterns: total,
+          isComplete: isComplete,
+          notes: notes,
+        };
+
+        // Save to localStorage
+        saveDataToLocalStorage();
+
+        // Close the modal
+        const modal = document.getElementById("creator-modal");
+        document.body.removeChild(modal);
+
+        // Refresh creators view
+        renderCreators();
+
+        // Refresh pattern gallery to update badges
+        renderPatternGallery();
+
+        showNotification("Creator saved successfully");
       }
 
       // Show notification
