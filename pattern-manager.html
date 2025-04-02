@@ -9,8 +9,7 @@ CURRENT BUG LIST (address later)
 [ ] Hover transitions on selected pattern cards vs unselected:
       selected cards clonk down while unselected cards ease down. how do that on selected cards?!
 [ ] Rename the farts css class
-[ ] Make Tags and Creators sections of the sidebar collapsable & start with Creators collapsed
-[ ] Add sort by # of patterns and sort alphabetical options to the Creators tab
+[ ] Creators alphabetical and pattern # are opposite so the arrows don't really work for both...
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -204,11 +203,11 @@ CURRENT BUG LIST (address later)
         align-items: center; /* Center align all items */
         margin: -20px;
         margin-bottom: 20px;
-        padding: 20px;
+        padding: 10px 20px;
         flex-wrap: wrap; /* Allow wrapping on smaller screens */
         gap: 10px;
         background: white;
-        border-bottom: 2px solid var(--primary-color);
+        /* border-bottom: 2px solid var(--primary-color); */
       }
       /* .action-bar {
         flex-direction: column;
@@ -480,7 +479,8 @@ CURRENT BUG LIST (address later)
 
       .success-message {
         color: var(--success-color);
-        background-color: rgba(46, 204, 113, 0.1);
+        /* background-color: rgba(46, 204, 113, 0.1); */
+        background-color: var(--secondary-color);
         padding: 10px;
         border-radius: 4px;
         margin-bottom: 10px;
@@ -1294,6 +1294,9 @@ CURRENT BUG LIST (address later)
       }
       .duplicate-sets-container {
         margin-top: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
       }
       .duplicate-set {
         background: white;
@@ -1330,8 +1333,7 @@ CURRENT BUG LIST (address later)
       }
       .duplicate-pattern {
         flex: 1;
-        min-width: 200px;
-        max-width: 300px;
+        width: 200px;
         border: 1px solid var(--border-color);
         border-radius: 4px;
         overflow: hidden;
@@ -1518,7 +1520,10 @@ CURRENT BUG LIST (address later)
         gap: 10px;
         margin-top: 10px;
       }
-      .create-creator-btn {
+      #creators .sort-dropdown-container {
+        margin-left: auto;
+      }
+      #duplicates #scan-duplicates-btn {
         margin-left: auto;
       }
 
@@ -1968,6 +1973,7 @@ CURRENT BUG LIST (address later)
         addBackToTopButton();
         addCreateCreatorButton();
         initSorting();
+        initCreatorSorting();
         setupCollapsibleSidebar();
         setupCreatorSearch();
         setupSetSearch();
@@ -2818,6 +2824,96 @@ CURRENT BUG LIST (address later)
         }
       }
 
+      // Setup sort dropdown for creators tab
+      function setupCreatorSortDropdown() {
+        // Find the action bar in creators tab
+        const actionBar = document.querySelector("#creators .action-bar");
+
+        // Create the dropdown container
+        const sortDropdownContainer = document.createElement("div");
+        sortDropdownContainer.className = "sort-dropdown-container";
+
+        // Create the dropdown button
+        const sortButton = document.createElement("button");
+        sortButton.id = "creator-sort-dropdown-button";
+        sortButton.className = "btn btn-secondary sort-dropdown-button";
+        sortButton.innerHTML =
+          'Sort: Alphabetical <span class="dropdown-arrow">▼</span>';
+
+        // Create the dropdown menu
+        const dropdownMenu = document.createElement("div");
+        dropdownMenu.className = "sort-dropdown-menu";
+        dropdownMenu.innerHTML = `
+    <div class="sort-option active" data-sort="alphabetical" data-direction="asc">
+      <span class="sort-icon"></span> Alphabetical
+    </div>
+    <div class="sort-option" data-sort="pattern-count" data-direction="desc">
+      <span class="sort-icon">↓</span> Pattern Count
+    </div>
+  `;
+
+        // Assemble dropdown
+        sortDropdownContainer.appendChild(sortButton);
+        sortDropdownContainer.appendChild(dropdownMenu);
+
+        // Insert before the Add Creator button
+        const createBtn = actionBar.querySelector("#create-creator-btn");
+        actionBar.insertBefore(sortDropdownContainer, createBtn);
+
+        // Toggle dropdown on button click
+        sortButton.addEventListener("click", function (e) {
+          e.stopPropagation();
+          dropdownMenu.classList.toggle("show");
+        });
+
+        // Close dropdown when clicking elsewhere
+        document.addEventListener("click", function () {
+          dropdownMenu.classList.remove("show");
+        });
+
+        // Handle sort option selection
+        dropdownMenu.querySelectorAll(".sort-option").forEach((option) => {
+          option.addEventListener("click", function (e) {
+            e.stopPropagation();
+
+            const sortType = this.getAttribute("data-sort");
+            let direction = this.getAttribute("data-direction");
+
+            // Toggle direction if the same option is clicked again
+            if (this.classList.contains("active")) {
+              direction = direction === "asc" ? "desc" : "asc";
+              this.setAttribute("data-direction", direction);
+              this.querySelector(".sort-icon").textContent =
+                direction === "asc" ? "↑" : "↓";
+            } else {
+              // Reset all options
+              dropdownMenu.querySelectorAll(".sort-option").forEach((opt) => {
+                opt.classList.remove("active");
+              });
+
+              // Mark current option as active
+              this.classList.add("active");
+            }
+
+            // Update app state with the selected sort
+            appData.creatorSort = {
+              type: sortType,
+              direction: direction,
+            };
+
+            // Update button text to show current sort
+            const sortText = this.textContent.trim();
+            sortButton.innerHTML = `Sort: ${sortText} <span class="dropdown-arrow">▼</span>`;
+
+            // Hide the dropdown
+            dropdownMenu.classList.remove("show");
+
+            // Re-render the creators list
+            renderCreators();
+          });
+        });
+      }
+
       // Initialize the sorting
       function initSorting() {
         appData.activeSort = {
@@ -2826,6 +2922,19 @@ CURRENT BUG LIST (address later)
         };
 
         setupSortByDropdown();
+      }
+
+      function initCreatorSorting() {
+        // Set default sort if not already set
+        if (!appData.creatorSort) {
+          appData.creatorSort = {
+            type: "alphabetical",
+            direction: "asc",
+          };
+        }
+
+        // Setup the dropdown UI
+        setupCreatorSortDropdown();
       }
 
       // Add to setupEventListeners function - new button for selection mode
@@ -5366,6 +5475,26 @@ CURRENT BUG LIST (address later)
           return;
         }
 
+        // Apply sorting
+        const sort = appData.creatorSort || {
+          type: "alphabetical",
+          direction: "asc",
+        };
+
+        if (sort.type === "alphabetical") {
+          creators.sort((a, b) => {
+            return sort.direction === "asc"
+              ? a.name.localeCompare(b.name)
+              : b.name.localeCompare(a.name);
+          });
+        } else if (sort.type === "pattern-count") {
+          creators.sort((a, b) => {
+            const countA = a.patterns.length;
+            const countB = b.patterns.length;
+            return sort.direction === "asc" ? countA - countB : countB - countA;
+          });
+        }
+
         creators.forEach((creator) => {
           const creatorCard = document.createElement("div");
           creatorCard.className = "creator-card";
@@ -7224,69 +7353,60 @@ CURRENT BUG LIST (address later)
                 .filter((p) => p);
 
               setDiv.innerHTML = `
-                    <div class="duplicate-set-header">
-                        <h3>Duplicate Set #${index + 1}</h3>
-                        <div class="similarity-info">
-                            <span class="similarity-badge high">Exact Match</span>
-                        </div>
+                <div class="duplicate-set-header">
+                    <h3>Duplicate Set #${index + 1}</h3>
+                    <div class="similarity-info">
+                        <span class="similarity-badge high">Exact Match</span>
                     </div>
-                    <div class="duplicate-patterns">
-                        ${setPatterns
-                          .map(
-                            (pattern) => `
-                            <div class="duplicate-pattern" data-id="${
-                              pattern.id
-                            }">
-                                <div class="pattern-preview">
-                                    <img src="${pattern.thumbnailPath}" alt="${
-                              pattern.patternName
-                            }" class="pixel-art-image">
-                                    <div class="pattern-select">
-                                        <input type="radio" name="primary-${index}" value="${
-                              pattern.id
-                            }" 
-                                            id="primary-${pattern.id}" ${
-                              set.indexOf(pattern.id) === 0 ? "checked" : ""
-                            }>
-                                        <label for="primary-${
-                                          pattern.id
-                                        }">Primary</label>
-                                    </div>
-                                </div>
-                                <div class="pattern-details">
-                                    <div class="pattern-name">${
-                                      pattern.patternName
-                                    }</div>
-                                    <div class="pattern-creator">by ${
-                                      pattern.creatorName
-                                    }</div>
-                                    <div class="pattern-metadata">
-                                        <span>Added: ${
-                                          pattern.dateAdded || "Unknown"
-                                        }</span>
-                                        <span>${
-                                          pattern.tags.length > 0
-                                            ? `Tags: ${pattern.tags.join(", ")}`
-                                            : "No tags"
-                                        }</span>
-                                        <span>${
-                                          pattern.setName
-                                            ? `In set: ${pattern.setName}`
-                                            : "Not in a set"
-                                        }</span>
-                                    </div>
+                </div>
+                <div class="duplicate-patterns">
+                    ${setPatterns
+                      .map(
+                        (pattern) => `
+                        <div class="duplicate-pattern" data-id="${pattern.id}">
+                            <div class="pattern-preview">
+                                <img src="${pattern.thumbnailPath}" alt="${
+                          pattern.patternName
+                        }" class="pixel-art-image">
+                                <div class="pattern-select">
+                                    <input type="radio" name="primary-${index}" value="${
+                          pattern.id
+                        }" 
+                                        id="primary-${pattern.id}" ${
+                          set.indexOf(pattern.id) === 0 ? "checked" : ""
+                        }>
+                                    <label for="primary-${pattern.id}">Primary</label>
                                 </div>
                             </div>
-                        `
-                          )
-                          .join("")}
-                    </div>
-                    <div class="duplicate-actions">
-                        <button class="btn" data-action="merge" data-set="${index}">Merge Selected as Primary</button>
-                        <button class="btn btn-secondary" data-action="keep-all" data-set="${index}">Keep All as Related</button>
-                        <button class="btn btn-secondary" data-action="ignore" data-set="${index}">Ignore</button>
-                    </div>
-                `;
+                            <div class="pattern-details">
+                                <div class="pattern-name">${pattern.patternName}</div>
+                                <div class="pattern-creator">by ${pattern.creatorName}</div>
+                                <div class="pattern-metadata">
+                                    <span>File: ${pattern.fileName || "Unknown"}</span>
+                                    <span>Added: ${pattern.dateAdded || "Unknown"}</span>
+                                    <span>${
+                                      pattern.tags.length > 0
+                                        ? `Tags: ${pattern.tags.join(", ")}`
+                                        : "No tags"
+                                    }</span>
+                                    <span>${
+                                      pattern.setName
+                                        ? `In set: ${pattern.setName}`
+                                        : "Not in a set"
+                                    }</span>
+                                </div>
+                            </div>
+                        </div>
+                    `
+                      )
+                      .join("")}
+                </div>
+                <div class="duplicate-actions">
+                    <button class="btn" data-action="merge" data-set="${index}">Merge Selected as Primary</button>
+                    <button class="btn btn-secondary" data-action="keep-all" data-set="${index}">Keep All as Related</button>
+                    <button class="btn btn-secondary" data-action="ignore" data-set="${index}">Ignore</button>
+                </div>
+            `;
 
               container.appendChild(setDiv);
             });
