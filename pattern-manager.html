@@ -13,12 +13,15 @@ CURRENT BUG LIST (address later)
 [ ] Should probably integrate the TownID and the PlayerID from the NHD file into the program's
       creator ID to ensure that creators with the same name & town name (but presumably
       different IDs) don't get merged
+[ ] Importing after switching to relative URLs in the settings doesn't work (script times out)
+[ ] The duplicate detection UI is currently bugged after handling an unclear number of items
 -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <title>Animal Crossing Pattern Collection Manager</title>
     <style>
       :root {
@@ -4485,7 +4488,9 @@ CURRENT BUG LIST (address later)
                         ${setPatterns
                           .map(
                             (pattern, index) => `
-                            <img class="set-pattern" src="${getPatternThumbnailSrc(pattern)}" 
+                            <img class="set-pattern" src="${getPatternThumbnailSrc(
+                              pattern
+                            )}" 
                                 alt="${pattern.patternName}" 
                                 title="${pattern.patternName}" 
                                 data-id="${pattern.id}" 
@@ -7316,9 +7321,42 @@ CURRENT BUG LIST (address later)
             });
 
           // Find duplicate sets (patterns with the same hash)
-          const duplicates = Object.values(hashedPatterns).filter(
+          let duplicates = Object.values(hashedPatterns).filter(
             (patternIds) => patternIds.length > 1
           );
+
+          // Sort each duplicate set internally by creator name
+          duplicates = duplicates.map((patternIds) => {
+            return patternIds.sort((a, b) => {
+              const patternA = appData.patterns[a];
+              const patternB = appData.patterns[b];
+              if (!patternA || !patternB) return 0;
+
+              // First sort by creator name
+              const creatorCompare = patternA.creatorName.localeCompare(
+                patternB.creatorName
+              );
+
+              // If creator names are the same, then sort by pattern name
+              if (creatorCompare === 0) {
+                return patternA.patternName.localeCompare(patternB.patternName);
+              }
+
+              return creatorCompare;
+            });
+          });
+
+          // Sort duplicate sets by the first pattern's creator name
+          duplicates.sort((setA, setB) => {
+            const firstPatternA = appData.patterns[setA[0]];
+            const firstPatternB = appData.patterns[setB[0]];
+
+            if (!firstPatternA || !firstPatternB) return 0;
+
+            return firstPatternA.creatorName.localeCompare(
+              firstPatternB.creatorName
+            );
+          });
 
           // Render results
           if (duplicates.length === 0) {
@@ -7339,10 +7377,10 @@ CURRENT BUG LIST (address later)
               const setDiv = document.createElement("div");
               setDiv.className = "duplicate-set";
 
-              // Get patterns for this set
+              // Get patterns in this set
               const setPatterns = set
                 .map((id) => appData.patterns[id])
-                .filter((p) => p);
+                .filter((p) => p); // Filter out any null/undefined patterns
 
               setDiv.innerHTML = `
                 <div class="duplicate-set-header">
@@ -7354,12 +7392,10 @@ CURRENT BUG LIST (address later)
                 <div class="duplicate-patterns">
                     ${setPatterns
                       .map(
-                        (pattern) => `
+                        (pattern, index) => `
                         <div class="duplicate-pattern" data-id="${pattern.id}">
                             <div class="pattern-preview">
-                                <img src="${getPatternThumbnailSrc(
-                                  pattern
-                                )}" alt="${
+                                <img src="${getPatternThumbnailSrc(pattern)}" alt="${
                           pattern.patternName
                         }" class="pixel-art-image">
                                 <div class="pattern-select">
@@ -7369,15 +7405,11 @@ CURRENT BUG LIST (address later)
                                         id="primary-${pattern.id}" ${
                           set.indexOf(pattern.id) === 0 ? "checked" : ""
                         }>
-                                    <label for="primary-${
-                                      pattern.id
-                                    }">Primary</label>
+                                    <label for="primary-${pattern.id}">Primary</label>
                                 </div>
                             </div>
                             <div class="pattern-details">
-                                <div class="pattern-name">${
-                                  pattern.patternName
-                                }</div>
+                                <div class="pattern-name">${pattern.patternName}</div>
                                 <div class="pattern-creator">by ${
                                   pattern.creatorName
                                 }</div>
