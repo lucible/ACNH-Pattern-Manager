@@ -21,7 +21,7 @@ CURRENT BUG LIST (address later)
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <title>Animal Crossing Pattern Collection Manager</title>
     <style>
       :root {
@@ -6515,6 +6515,16 @@ CURRENT BUG LIST (address later)
             (r) => r.status === "rejected"
           ).length;
 
+          // After all imports are processed
+          console.log("Total importPromises:", importPromises.length);
+          console.log("Total results:", results.length);
+          console.log("Total successes:", successes);
+          console.log(
+            "Total patterns after import:",
+            Object.keys(appData.patterns).length
+          );
+          console.log("Processed files count:", appData.processedFiles.size);
+
           importStatus.innerHTML = `<div class="success-message">Imported ${successes} patterns successfully.${
             failures > 0 ? ` Failed to import ${failures} patterns.` : ""
           }</div>`;
@@ -6650,6 +6660,19 @@ CURRENT BUG LIST (address later)
         });
       }
 
+      function generateUniquePatternId() {
+        const timestamp = Date.now();
+        const random = Math.floor(Math.random() * 1000000); // Use a larger range
+        const uniqueId = `pattern-${timestamp}-${random}`;
+
+        // Check if this ID already exists and regenerate if needed
+        if (appData.patterns[uniqueId]) {
+          return generateUniquePatternId(); // Recursive call to try again
+        }
+
+        return uniqueId;
+      }
+
       // Import a single pattern
       async function importPattern(nhdFile, pngFile, metadata) {
         return new Promise(async (resolve, reject) => {
@@ -6660,8 +6683,7 @@ CURRENT BUG LIST (address later)
             console.log(`PNG file available: ${pngFile !== null}`);
 
             // Generate pattern ID
-            const patternId =
-              "pattern-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+            const patternId = generateUniquePatternId();
 
             // Create pattern entry
             const pattern = {
@@ -7395,7 +7417,9 @@ CURRENT BUG LIST (address later)
                         (pattern, index) => `
                         <div class="duplicate-pattern" data-id="${pattern.id}">
                             <div class="pattern-preview">
-                                <img src="${getPatternThumbnailSrc(pattern)}" alt="${
+                                <img src="${getPatternThumbnailSrc(
+                                  pattern
+                                )}" alt="${
                           pattern.patternName
                         }" class="pixel-art-image">
                                 <div class="pattern-select">
@@ -7405,11 +7429,15 @@ CURRENT BUG LIST (address later)
                                         id="primary-${pattern.id}" ${
                           set.indexOf(pattern.id) === 0 ? "checked" : ""
                         }>
-                                    <label for="primary-${pattern.id}">Primary</label>
+                                    <label for="primary-${
+                                      pattern.id
+                                    }">Primary</label>
                                 </div>
                             </div>
                             <div class="pattern-details">
-                                <div class="pattern-name">${pattern.patternName}</div>
+                                <div class="pattern-name">${
+                                  pattern.patternName
+                                }</div>
                                 <div class="pattern-creator">by ${
                                   pattern.creatorName
                                 }</div>
