@@ -1986,15 +1986,17 @@ CURRENT BUG LIST (address later)
       }
 
       function getPatternThumbnailSrc(pattern) {
-        // First try thumbnailPath (which would be Base64 if enabled)
-        if (pattern.thumbnailPath) {
+        // If we're storing base64 data and it exists, use it
+        if (appSettings.storeThumbnailsAsBase64 && pattern.thumbnailPath) {
           return pattern.thumbnailPath;
         }
-        // Then try originalFilePath as fallback when using file paths instead of Base64
-        else if (pattern.originalFilePath) {
+
+        // If we're using relative paths and originalFilePath exists, use it
+        if (!appSettings.storeThumbnailsAsBase64 && pattern.originalFilePath) {
           return pattern.originalFilePath;
         }
-        // Default "no thumbnail" image
+
+        // Fallback to placeholder image if no valid thumbnail source found
         return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
       }
 
@@ -2053,6 +2055,13 @@ CURRENT BUG LIST (address later)
       // Save data to localStorage
       function saveDataToLocalStorage() {
         try {
+          const patternIds = Object.keys(appData.patterns);
+          if (patternIds.length > 0) {
+            const sampleId = patternIds[0];
+            console.log(
+              `Sample pattern ${sampleId} hash before saving: ${appData.patterns[sampleId].fileHash}`
+            );
+          }
           // If not storing base64 thumbnails, create a copy of patterns without the base64 data
           if (!appSettings.storeThumbnailsAsBase64) {
             const patternsForStorage = {};
@@ -6365,33 +6374,65 @@ CURRENT BUG LIST (address later)
             file.name.endsWith(".png")
           );
 
+          // Track duplicates
+          const duplicatePatterns = [];
+          const skippedExistingFiles = [];
+
           // Map to group pattern files by their pattern and creator name
           const patternGroups = new Map();
 
-          // Used thumbnails tracking
-          const usedThumbnails = new Set();
+          importStatus.innerHTML =
+            '<div class="loading"></div> Checking for duplicates...';
 
-          // First, group patterns by their name and creator
+          // First, check for duplicates and group patterns
+          let processedCount = 0;
           for (const nhdFile of nhdFiles) {
+            // Update status every 10 files
+            if (++processedCount % 10 === 0) {
+              importStatus.innerHTML = `<div class="loading"></div> Checking for duplicates: ${processedCount}/${nhdFiles.length}`;
+            }
+
             // Skip already processed files
-            if (appData.processedFiles.has(nhdFile.name)) continue;
+            if (appData.processedFiles.has(nhdFile.name)) {
+              skippedExistingFiles.push(nhdFile.name);
+              continue;
+            }
 
             // Extract metadata
             const metadata = await extractMetadataFromFile(nhdFile);
+
+            // Check if this pattern is an exact duplicate and get its hash
+            const duplicateResult = await isExactDuplicate(metadata, nhdFile);
+
+            if (duplicateResult.isDuplicate) {
+              duplicatePatterns.push({
+                fileName: nhdFile.name,
+                patternName: metadata.patternName,
+                creatorName: metadata.creatorName,
+                townName: metadata.townName,
+                existingPatternId: duplicateResult.existingPatternId,
+              });
+              continue; // Skip this file
+            }
+
             const key = `${metadata.patternName}-${metadata.creatorName}`;
 
             if (!patternGroups.has(key)) {
               patternGroups.set(key, []);
             }
 
+            // Store the fileHash from duplicateResult
             patternGroups.get(key).push({
               file: nhdFile,
               metadata: metadata,
+              fileHash: duplicateResult.fileHash, // Store hash from duplicate check
             });
           }
 
           // Process each group to assign thumbnails in order
           const importPromises = [];
+
+          importStatus.innerHTML = `<div class="loading"></div> Processing ${patternGroups.size} pattern groups...`;
 
           for (const [key, patterns] of patternGroups.entries()) {
             // Sort patterns (optional, depending on your preference)
@@ -6402,10 +6443,14 @@ CURRENT BUG LIST (address later)
               return numA - numB;
             });
 
+            // Used thumbnails tracking
+            const usedThumbnails = new Set();
+
             // For each pattern in the group, find the corresponding thumbnail
             for (let i = 0; i < patterns.length; i++) {
               const pattern = patterns[i];
               const metadata = pattern.metadata;
+              const fileHash = pattern.fileHash; // Get the fileHash we stored from duplicateResult
 
               // Generate the base thumbnail name
               const sanitizedBaseName = sanitizeFilename(
@@ -6497,7 +6542,12 @@ CURRENT BUG LIST (address later)
 
               // Import the pattern with the found thumbnail
               importPromises.push(
-                importPattern(pattern.file, targetThumbnail, metadata)
+                importPattern(
+                  pattern.file,
+                  targetThumbnail,
+                  pattern.metadata,
+                  fileHash // Pass the fileHash we got from duplicateResult
+                )
               );
             }
           }
@@ -6515,19 +6565,32 @@ CURRENT BUG LIST (address later)
             (r) => r.status === "rejected"
           ).length;
 
-          // After all imports are processed
-          console.log("Total importPromises:", importPromises.length);
-          console.log("Total results:", results.length);
-          console.log("Total successes:", successes);
-          console.log(
-            "Total patterns after import:",
-            Object.keys(appData.patterns).length
-          );
-          console.log("Processed files count:", appData.processedFiles.size);
+          // Create status message with duplicate information
+          let statusMessage = `<div class="success-message">Imported ${successes} patterns successfully.`;
+          if (failures > 0)
+            statusMessage += ` Failed to import ${failures} patterns.`;
+          statusMessage += `</div>`;
 
-          importStatus.innerHTML = `<div class="success-message">Imported ${successes} patterns successfully.${
-            failures > 0 ? ` Failed to import ${failures} patterns.` : ""
-          }</div>`;
+          // Add information about duplicates
+          if (duplicatePatterns.length > 0) {
+            statusMessage += `<div class="info-message">Skipped ${duplicatePatterns.length} exact duplicate patterns.</div>`;
+
+            // Create a detailed list of skipped duplicates if there aren't too many
+            if (duplicatePatterns.length <= 10) {
+              statusMessage += "<ul class='duplicate-list'>";
+              duplicatePatterns.forEach((dupe) => {
+                statusMessage += `<li>${dupe.patternName} by ${dupe.creatorName} of ${dupe.townName} (${dupe.fileName})</li>`;
+              });
+              statusMessage += "</ul>";
+            }
+          }
+
+          // Add information about already processed files
+          if (skippedExistingFiles.length > 0) {
+            statusMessage += `<div class="info-message">Skipped ${skippedExistingFiles.length} previously processed files.</div>`;
+          }
+
+          importStatus.innerHTML = statusMessage;
 
           // Save data
           saveDataToLocalStorage();
@@ -6536,7 +6599,9 @@ CURRENT BUG LIST (address later)
           renderPatternGallery();
           renderSidebarFilters();
 
-          showNotification(`Imported ${successes} patterns`);
+          showNotification(
+            `Imported ${successes} patterns, skipped ${duplicatePatterns.length} duplicates`
+          );
         } catch (error) {
           console.error("Error importing patterns:", error);
           importStatus.innerHTML = `<div class="error-message">Error importing patterns: ${error.message}</div>`;
@@ -6673,14 +6738,141 @@ CURRENT BUG LIST (address later)
         return uniqueId;
       }
 
+      // Check if a pattern is an exact duplicate of an existing pattern
+      async function isExactDuplicate(metadata, nhdFile) {
+        console.log(
+          `=== CHECKING FOR DUPLICATE: ${metadata.patternName} by ${metadata.creatorName} ===`
+        );
+
+        // First check: Find patterns with the same name, creator and town
+        const candidatePatterns = Object.values(appData.patterns).filter(
+          (pattern) =>
+            pattern.patternName === metadata.patternName &&
+            pattern.creatorName === metadata.creatorName &&
+            pattern.townName === metadata.townName
+        );
+
+        console.log(
+          `Found ${candidatePatterns.length} potential matches with same metadata`
+        );
+
+        // Always calculate the hash, no matter what
+        console.log(`Calculating hash for new file: ${nhdFile.name}`);
+        const newFileHash = await calculateFileHash(nhdFile);
+        console.log(`New file hash calculated: ${newFileHash}`);
+
+        // If no candidates with same metadata, it's not a duplicate
+        if (candidatePatterns.length === 0) {
+          console.log(
+            `No metadata matches, not a duplicate. Returning hash: ${newFileHash}`
+          );
+          return { isDuplicate: false, fileHash: newFileHash };
+        }
+
+        // Log details of potential matches
+        candidatePatterns.forEach((pattern, index) => {
+          console.log(`Match candidate #${index + 1}:`);
+          console.log(`  ID: ${pattern.id}`);
+          console.log(`  Filename: ${pattern.fileName}`);
+          console.log(`  Stored hash: ${pattern.fileHash || "None"}`);
+        });
+
+        // Check for hash matches
+        for (const pattern of candidatePatterns) {
+          if (pattern.fileHash === newFileHash) {
+            console.log(
+              `DUPLICATE FOUND: ${nhdFile.name} matches existing pattern ${pattern.id}`
+            );
+            return {
+              isDuplicate: true,
+              existingPatternId: pattern.id,
+              fileHash: newFileHash,
+            };
+          }
+        }
+
+        console.log(
+          `No matching hash found, this is a new pattern. Returning hash: ${newFileHash}`
+        );
+        return { isDuplicate: false, fileHash: newFileHash };
+      }
+
+      // Calculate a hash of the file content for comparison
+      async function calculateFileHash(file) {
+        console.log(`Starting hash calculation for ${file.name}`);
+
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onload = async function (e) {
+            try {
+              console.log(
+                `File ${file.name} loaded, size: ${e.target.result.byteLength} bytes`
+              );
+
+              // Use SubtleCrypto API to create SHA-256 hash of file content
+              try {
+                console.log(`Using SubtleCrypto for hash calculation`);
+                const hashBuffer = await crypto.subtle.digest(
+                  "SHA-256",
+                  e.target.result
+                );
+
+                // Convert hash to hex string
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray
+                  .map((b) => b.toString(16).padStart(2, "0"))
+                  .join("");
+
+                console.log(
+                  `Hash calculated successfully: ${hashHex.substring(0, 20)}...`
+                );
+                resolve(hashHex);
+              } catch (cryptoError) {
+                console.warn(
+                  `SubtleCrypto failed: ${cryptoError}. Using fallback method.`
+                );
+
+                // Fallback method if crypto API is not available
+                let hash = 0;
+                const data = new Uint8Array(e.target.result);
+                for (let i = 0; i < data.length; i++) {
+                  hash = (hash << 5) - hash + data[i];
+                  hash |= 0; // Convert to 32bit integer
+                }
+                const hashHex = hash.toString(16);
+                console.log(`Fallback hash calculated: ${hashHex}`);
+                resolve(hashHex);
+              }
+            } catch (error) {
+              console.error(`Error calculating hash: ${error}`);
+              reject(error);
+            }
+          };
+
+          reader.onerror = function (error) {
+            console.error(`Error reading file for hash calculation: ${error}`);
+            reject(error);
+          };
+
+          try {
+            reader.readAsArrayBuffer(file);
+          } catch (error) {
+            console.error(`Error initiating file read: ${error}`);
+            reject(error);
+          }
+        });
+      }
+
       // Import a single pattern
-      async function importPattern(nhdFile, pngFile, metadata) {
+      async function importPattern(nhdFile, pngFile, metadata, fileHash) {
         return new Promise(async (resolve, reject) => {
           try {
             console.log(
               `Importing pattern: ${nhdFile.name}, size: ${nhdFile.size} bytes`
             );
             console.log(`PNG file available: ${pngFile !== null}`);
+            console.log(`FileHash available: ${fileHash ? "YES" : "NO"}`);
 
             // Generate pattern ID
             const patternId = generateUniquePatternId();
@@ -6689,8 +6881,8 @@ CURRENT BUG LIST (address later)
             const pattern = {
               id: patternId,
               fileName: nhdFile.name,
-              thumbnailPath: null, // Will be set below based on storage preference
-              originalFilePath: null, // Store original file path for reference
+              thumbnailPath: null,
+              originalFilePath: null,
 
               // Metadata from .nhd file
               patternName: metadata.patternName || "Unnamed Pattern",
@@ -6710,13 +6902,17 @@ CURRENT BUG LIST (address later)
               dateAdded: new Date().toISOString().split("T")[0],
               lastModified: new Date().toISOString().split("T")[0],
 
-              // Hash for duplicate detection
+              // Hash for duplicate detection and file content comparison
               thumbnailHash: null,
+              fileHash: fileHash, // Store the file hash we received from the duplicate check
             };
+
+            console.log(`Pattern created with fileHash: ${pattern.fileHash}`);
 
             // Handle thumbnail based on storage preference
             if (pngFile) {
-              // Always store the original file path for reference
+              // Store the original file path for reference
+              // When using relative URLs, this becomes the primary thumbnail source
               pattern.originalFilePath =
                 pngFile.webkitRelativePath || pngFile.name;
 
@@ -6730,21 +6926,21 @@ CURRENT BUG LIST (address later)
                 }
               }
 
-              // Generate hash for the thumbnail
+              // Generate hash for the thumbnail if possible
               try {
-                // Use either the base64 or the original file for hashing
-                const imageForHashing =
-                  pattern.thumbnailPath || URL.createObjectURL(pngFile);
-                pattern.thumbnailHash = await generateThumbnailHash(
-                  imageForHashing
-                );
-
-                // If we created a blob URL for hashing, revoke it to free memory
                 if (
-                  !pattern.thumbnailPath &&
-                  imageForHashing.startsWith("blob:")
+                  appSettings.storeThumbnailsAsBase64 &&
+                  pattern.thumbnailPath
                 ) {
-                  URL.revokeObjectURL(imageForHashing);
+                  // Use base64 data for hashing
+                  pattern.thumbnailHash = await generateThumbnailHash(
+                    pattern.thumbnailPath
+                  );
+                } else if (pngFile) {
+                  // Use the file directly for hashing when not using base64
+                  const blobUrl = URL.createObjectURL(pngFile);
+                  pattern.thumbnailHash = await generateThumbnailHash(blobUrl);
+                  URL.revokeObjectURL(blobUrl);
                 }
               } catch (hashError) {
                 console.error("Error generating hash:", hashError);
@@ -6759,6 +6955,9 @@ CURRENT BUG LIST (address later)
               town: pattern.townName,
               hash: pattern.thumbnailHash
                 ? pattern.thumbnailHash.substring(0, 20) + "..."
+                : "None",
+              fileHash: pattern.fileHash
+                ? pattern.fileHash.substring(0, 20) + "..."
                 : "None",
             });
 
