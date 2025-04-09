@@ -180,6 +180,7 @@ CURRENT BUG LIST (address later)
         cursor: pointer;
         border-bottom: 2px solid transparent;
         transition: color 0.2s, background-color 0.2s;
+        user-select: none;
       }
 
       .nav-tabs li:hover {
@@ -574,7 +575,8 @@ CURRENT BUG LIST (address later)
         padding: 15px;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        width: fit-content;
+        /* width: fit-content; */
+        width: 290px;
       }
 
       .set-patterns {
@@ -583,6 +585,7 @@ CURRENT BUG LIST (address later)
         margin-top: 10px;
         overflow-x: auto;
         padding-bottom: 10px;
+        flex-wrap: wrap;
       }
 
       .set-pattern {
@@ -4595,7 +4598,7 @@ CURRENT BUG LIST (address later)
             const id = pattern.getAttribute("data-id");
             if (appData.patterns[id]) {
               appData.patterns[id].setOrder = index + 1;
-            }
+      }
           });
 
           saveDataToLocalStorage();
@@ -4683,12 +4686,12 @@ CURRENT BUG LIST (address later)
         const formGroup = document.createElement("div");
         formGroup.className = "form-group";
         formGroup.innerHTML = `
-    <label>Patterns</label>
-    <div class="set-patterns-container">
-      <div class="set-patterns" id="edit-set-patterns"></div>
-    </div>
-    <p class="help-text">Drag to reorder. Click to remove.</p>
-  `;
+          <label>Patterns</label>
+          <div class="set-patterns-container">
+            <div class="set-patterns" id="edit-set-patterns"></div>
+          </div>
+          <p class="help-text">Drag to reorder. Click to remove.</p>
+        `;
 
         // Insert before save button
         const saveBtn = editModal.querySelector("#save-set-btn");
@@ -4714,7 +4717,7 @@ CURRENT BUG LIST (address later)
                 class="set-pattern pixel-art-image" 
                 title="${pattern.patternName}">
             <div class="pattern-order">${pattern.setOrder || 0}</div>
-            <div class="pattern-name">${pattern.patternName}</div>
+            <!--<div class="pattern-name">${pattern.patternName}</div>-->
             <button class="remove-pattern" title="Remove from set">×</button>
         `;
 
