@@ -5510,7 +5510,7 @@ CURRENT BUG LIST (address later)
         });
       }
 
-      // Generate a simple hash of an image
+      // Generate a hash of an image using SHA-256
       async function generateThumbnailHash(imageSrc) {
         return new Promise((resolve, reject) => {
           const img = new Image();
@@ -5521,7 +5521,7 @@ CURRENT BUG LIST (address later)
           canvas.width = 32;
           canvas.height = 32;
 
-          img.onload = function () {
+          img.onload = async function () {
             try {
               // Draw image on canvas
               ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -5535,24 +5535,37 @@ CURRENT BUG LIST (address later)
                 canvas.height
               ).data;
 
-              // Create a string from pixel data
-              let hash = "";
+              // Convert pixel data to an ArrayBuffer for hashing
+              const buffer = new Uint8Array(imageData).buffer;
 
-              // Sample every 4th pixel (for performance) and use RGB values
-              for (let i = 0; i < imageData.length; i += 16) {
-                if (imageData[i + 3] < 128) {
-                  // Transparent pixel
-                  hash += "T";
-                } else {
-                  // For colored pixels, quantize to reduce sensitivity to minor variations
-                  const r = Math.floor(imageData[i] / 32);
-                  const g = Math.floor(imageData[i + 1] / 32);
-                  const b = Math.floor(imageData[i + 2] / 32);
-                  hash += `${r}${g}${b}`;
+              try {
+                // Use SubtleCrypto API for SHA-256 hash
+                const hashBuffer = await crypto.subtle.digest(
+                  "SHA-256",
+                  buffer
+                );
+
+                // Convert hash to hex string
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray
+                  .map((b) => b.toString(16).padStart(2, "0"))
+                  .join("");
+
+                resolve(hashHex);
+              } catch (cryptoError) {
+                console.warn(
+                  `SubtleCrypto failed: ${cryptoError}. Using fallback method.`
+                );
+
+                // Fallback method if crypto API is not available
+                let hash = 0;
+                for (let i = 0; i < imageData.length; i++) {
+                  hash = (hash << 5) - hash + imageData[i];
+                  hash |= 0; // Convert to 32bit integer
                 }
+                const hashHex = hash.toString(16);
+                resolve(hashHex);
               }
-
-              resolve(hash);
             } catch (error) {
               reject(error);
             }
