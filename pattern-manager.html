@@ -279,7 +279,7 @@ CURRENT BUG LIST (address later)
             multiple
           />
         </div>
-        <div id="import-status full-width"></div>
+        <div id="import-status" class="full-width"></div>
         <button class="btn" id="start-import-btn">Import Patterns</button>
       </div>
     </div>
@@ -361,13 +361,13 @@ CURRENT BUG LIST (address later)
 
       function getPatternThumbnailSrc(pattern) {
         // If we're storing base64 data and it exists, use it
-        if (appSettings.storeThumbnailsAsBase64 && pattern.thumbnailPath) {
-          return pattern.thumbnailPath;
+        if (appSettings.storeThumbnailsAsBase64 && pattern.encodedThumbnail) {
+          return pattern.encodedThumbnail;
         }
 
-        // If we're using relative paths and originalFilePath exists, use it
-        if (!appSettings.storeThumbnailsAsBase64 && pattern.originalFilePath) {
-          return pattern.originalFilePath;
+        // If we're using relative paths and thumbnailPath exists, use it
+        if (!appSettings.storeThumbnailsAsBase64 && pattern.thumbnailPath) {
+          return pattern.thumbnailPath;
         }
 
         // Fallback to placeholder image if no valid thumbnail source found
@@ -445,10 +445,10 @@ CURRENT BUG LIST (address later)
 
               // Clear base64 data before storing
               if (
-                pattern.thumbnailPath &&
-                pattern.thumbnailPath.startsWith("data:")
+                pattern.encodedThumbnail &&
+                pattern.encodedThumbnail.startsWith("data:")
               ) {
-                pattern.thumbnailPath = null;
+                pattern.encodedThumbnail = null;
               }
 
               patternsForStorage[id] = pattern;
@@ -1421,21 +1421,7 @@ CURRENT BUG LIST (address later)
         }
 
         // Determine thumbnail source
-        let thumbnailSrc;
-
-        if (appSettings.storeThumbnailsAsBase64) {
-          // Use base64 thumbnail if available
-          thumbnailSrc = pattern.thumbnailPath;
-        } else {
-          // Try to use original file path
-          thumbnailSrc = pattern.originalFilePath;
-        }
-
-        // Default thumbnail if none available
-        if (!thumbnailSrc) {
-          thumbnailSrc =
-            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
-        }
+        let thumbnailSrc = getPatternThumbnailSrc(pattern);
 
         // Get creator info to determine if we need to add rank badges
         let creatorBadge = "";
@@ -1471,8 +1457,7 @@ CURRENT BUG LIST (address later)
           ${selectionCheckbox}
           <img class="pattern-thumbnail" src="${thumbnailSrc}" alt="${
           pattern.patternName
-        }" 
-              onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+'">
+        }">
             ${creatorBadge}
               <div class="pattern-info">
             <div class="pattern-name">${pattern.patternName}</div>
@@ -2451,25 +2436,10 @@ CURRENT BUG LIST (address later)
         if (!pattern) return;
 
         // Determine thumbnail source similar to createPatternCard
-        let thumbnailSrc;
-
-        if (appSettings.storeThumbnailsAsBase64) {
-          thumbnailSrc = pattern.thumbnailPath;
-        } else {
-          thumbnailSrc = pattern.originalFilePath;
-        }
-
-        if (!thumbnailSrc) {
-          thumbnailSrc =
-            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
-        }
+        let thumbnailSrc = getPatternThumbnailSrc(pattern);
 
         // Set pattern details in modal (using the determined thumbnail source)
         document.getElementById("modal-pattern-img").src = thumbnailSrc;
-        document.getElementById("modal-pattern-img").onerror = function () {
-          this.src =
-            "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y4ZjhmOCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIiBmaWxsPSIjOTk5Ij5ObyBUaHVtYm5haWw8L3RleHQ+PC9zdmc+";
-        };
         document
           .getElementById("modal-pattern-img")
           .classList.add("pixel-art-image");
@@ -5171,29 +5141,29 @@ CURRENT BUG LIST (address later)
         for (const pattern of patterns) {
           // Skip if already has base64 data
           if (
-            pattern.thumbnailPath &&
-            pattern.thumbnailPath.startsWith("data:")
+            pattern.encodedThumbnail &&
+            pattern.encodedThumbnail.startsWith("data:")
           ) {
             processedPatterns++;
             continue;
           }
 
           // Try to load from original file path
-          if (pattern.originalFilePath) {
+          if (pattern.thumbnailPath) {
             try {
               // This approach with fetch might not work with file:/// URLs due to security restrictions
               // Try to use relative paths that might work
-              const response = await fetch(pattern.originalFilePath);
+              const response = await fetch(pattern.thumbnailPath);
               const blob = await response.blob();
 
               // Create thumbnail from loaded file
-              pattern.thumbnailPath = await createResizedThumbnail(blob);
+              pattern.encodedThumbnail = await createResizedThumbnail(blob);
             } catch (error) {
               console.error(
-                `Could not load image from path: ${pattern.originalFilePath}`,
+                `Could not load image from path: ${pattern.thumbnailPath}`,
                 error
               );
-              pattern.thumbnailPath = null; // Reset if we couldn't load
+              pattern.encodedThumbnail = null; // Reset if we couldn't load
             }
           }
 
@@ -5213,16 +5183,16 @@ CURRENT BUG LIST (address later)
         for (const pattern of patterns) {
           // If we have base64 data, store the reference to original file and clear base64 data
           if (
-            pattern.thumbnailPath &&
-            pattern.thumbnailPath.startsWith("data:")
+            pattern.encodedThumbnail &&
+            pattern.encodedThumbnail.startsWith("data:")
           ) {
-            // Keep the originalFilePath but clear the base64 thumbnailPath
-            // We'll use originalFilePath when loading
-            if (!pattern.originalFilePath) {
+            // Keep the thumbnailPath but clear the base64 encodedThumbnail
+            // We'll use thumbnailPath when loading
+            if (!pattern.thumbnailPath) {
               // If somehow we don't have the original path, keep base64
-              pattern.originalFilePath = pattern.thumbnailPath;
+              pattern.thumbnailPath = pattern.encodedThumbnail;
             } else {
-              pattern.thumbnailPath = null;
+              pattern.encodedThumbnail = null;
             }
           }
         }
@@ -5761,8 +5731,9 @@ CURRENT BUG LIST (address later)
             const pattern = {
               id: patternId,
               fileName: nhdFile.name,
+              filePath: null,
+              encodedThumbnail: null,
               thumbnailPath: null,
-              originalFilePath: null,
 
               // Metadata from .nhd file
               patternName: metadata.patternName || "Unnamed Pattern",
@@ -5793,16 +5764,16 @@ CURRENT BUG LIST (address later)
             if (pngFile) {
               // Store the original file path for reference
               // When using relative URLs, this becomes the primary thumbnail source
-              pattern.originalFilePath =
+              pattern.thumbnailPath =
                 pngFile.webkitRelativePath || pngFile.name;
 
               // If storing as base64, create resized thumbnail
               if (appSettings.storeThumbnailsAsBase64) {
                 try {
-                  pattern.thumbnailPath = await createResizedThumbnail(pngFile);
+                  pattern.encodedThumbnail = await createResizedThumbnail(pngFile);
                 } catch (error) {
                   console.error("Error creating thumbnail:", error);
-                  pattern.thumbnailPath = null;
+                  pattern.encodedThumbnail = null;
                 }
               }
 
@@ -5810,11 +5781,11 @@ CURRENT BUG LIST (address later)
               try {
                 if (
                   appSettings.storeThumbnailsAsBase64 &&
-                  pattern.thumbnailPath
+                  pattern.encodedThumbnail
                 ) {
                   // Use base64 data for hashing
                   pattern.thumbnailHash = await generateThumbnailHash(
-                    pattern.thumbnailPath
+                    pattern.encodedThumbnail
                   );
                 } else if (pngFile) {
                   // Use the file directly for hashing when not using base64
@@ -6058,34 +6029,35 @@ CURRENT BUG LIST (address later)
               const pattern = importData.patterns[id];
 
               // If the exported data used the new format with separate base64 and file paths
-              if (pattern.thumbnailPathBase64 || pattern.thumbnailPathFile) {
-                if (
-                  appSettings.storeThumbnailsAsBase64 &&
-                  pattern.thumbnailPathBase64
-                ) {
-                  pattern.thumbnailPath = pattern.thumbnailPathBase64;
-                } else {
-                  pattern.thumbnailPath = null;
-                }
+              // TODO: pretty sure this is wildly out of date
+              // if (pattern.encodedThumbnailBase64 || pattern.encodedThumbnailFile) {
+              //   if (
+              //     appSettings.storeThumbnailsAsBase64 &&
+              //     pattern.encodedThumbnailBase64
+              //   ) {
+              //     pattern.encodedThumbnail = pattern.encodedThumbnailBase64;
+              //   } else {
+              //     pattern.encodedThumbnail = null;
+              //   }
 
-                if (pattern.thumbnailPathFile) {
-                  pattern.originalFilePath = pattern.thumbnailPathFile;
-                }
+              //   if (pattern.encodedThumbnailFile) {
+              //     pattern.thumbnailPath = pattern.encodedThumbnailFile;
+              //   }
 
-                // Clean up temporary properties
-                delete pattern.thumbnailPathBase64;
-                delete pattern.thumbnailPathFile;
-              }
+              //   // Clean up temporary properties
+              //   delete pattern.encodedThumbnailBase64;
+              //   delete pattern.encodedThumbnailFile;
+              // }
               // If using old format, make sure it's compatible with current settings
-              else if (pattern.thumbnailPath) {
-                // If path is base64 but we're not storing base64, clear it and keep originalFilePath
+              if (pattern.encodedThumbnail) {
+                // If path is base64 but we're not storing base64, clear it and keep thumbnailPath
                 if (
-                  pattern.thumbnailPath.startsWith("data:") &&
+                  pattern.encodedThumbnail.startsWith("data:") &&
                   !appSettings.storeThumbnailsAsBase64
                 ) {
-                  pattern.originalFilePath =
-                    pattern.originalFilePath || pattern.thumbnailPath;
-                  pattern.thumbnailPath = null;
+                  pattern.thumbnailPath =
+                    pattern.thumbnailPath || pattern.encodedThumbnail;
+                  pattern.encodedThumbnail = null;
                 }
                 // If path is not base64 and we are storing base64, it will be loaded later on demand
               }
@@ -6177,7 +6149,7 @@ CURRENT BUG LIST (address later)
               // Keep file references from existing pattern
               const existingPattern = appData.patterns[id];
               pattern.fileName = existingPattern.fileName;
-              pattern.thumbnailPath = existingPattern.thumbnailPath;
+              pattern.encodedThumbnail = existingpattern.encodedThumbnail;
               pattern.thumbnailHash = existingPattern.thumbnailHash;
 
               // Update existing pattern
@@ -6186,8 +6158,9 @@ CURRENT BUG LIST (address later)
             // If not updateExisting, keep the existing pattern unchanged
           } else {
             // New pattern, just add it (note that thumbnailPath will be a URL that won't be valid)
-            pattern.thumbnailPath = null; // Clear invalid thumbnail path
-            pattern.thumbnailHash = null; // Clear hash since thumbnail is not available
+            // TODO: pretty sure the below is bad (clears out existing data)
+            // pattern.encodedThumbnail = null; // Clear invalid thumbnail path
+            // pattern.thumbnailHash = null; // Clear hash since thumbnail is not available
             appData.patterns[id] = pattern;
           }
         }
@@ -6326,15 +6299,16 @@ CURRENT BUG LIST (address later)
           exportData.patterns[id] = { ...appData.patterns[id] };
 
           // If we have base64 data and original file path, include both
-          if (
-            appData.patterns[id].thumbnailPath &&
-            appData.patterns[id].originalFilePath
-          ) {
-            exportData.patterns[id].thumbnailPathBase64 =
-              appData.patterns[id].thumbnailPath;
-            exportData.patterns[id].thumbnailPathFile =
-              appData.patterns[id].originalFilePath;
-          }
+          // [ ] TODO: is this relevant at all?
+          // if (
+          //   appData.patterns[id].encodedThumbnail &&
+          //   appData.patterns[id].thumbnailPath
+          // ) {
+          //   exportData.patterns[id].thumbnailPathBase64 =
+          //     appData.patterns[id].thumbnailPath;
+          //   exportData.patterns[id].thumbnailPathFile =
+          //     appData.patterns[id].originalFilePath;
+          // }
         }
 
         // Create download link
@@ -6369,8 +6343,8 @@ CURRENT BUG LIST (address later)
             (p) =>
               p.thumbnailHash ||
               (appSettings.storeThumbnailsAsBase64
-                ? p.thumbnailPath
-                : p.originalFilePath)
+                ? p.encodedThumbnail
+                : p.thumbnailPath)
           );
 
           if (patterns.length === 0) {
@@ -6390,8 +6364,8 @@ CURRENT BUG LIST (address later)
               try {
                 // Use the appropriate thumbnail source
                 const thumbnailSrc = appSettings.storeThumbnailsAsBase64
-                  ? pattern.thumbnailPath
-                  : pattern.originalFilePath;
+                  ? pattern.encodedThumbnail
+                  : pattern.thumbnailPath;
 
                 if (thumbnailSrc) {
                   pattern.thumbnailHash = await generateThumbnailHash(
@@ -6741,8 +6715,8 @@ CURRENT BUG LIST (address later)
           }
 
           // Keep original file path if primary doesn't have it
-          if (!primary.originalFilePath && duplicate.originalFilePath) {
-            primary.originalFilePath = duplicate.originalFilePath;
+          if (!primary.thumbnailPath && duplicate.thumbnailPath) {
+            primary.thumbnailPath = duplicate.thumbnailPath;
           }
 
           // Remove from creator's patterns
