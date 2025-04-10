@@ -761,12 +761,19 @@ CURRENT BUG LIST (address later)
           appData.activeFilters.tags.size > 0 ||
           appData.activeFilters.creators.size > 0 ||
           appData.activeFilters.sets.size > 0 ||
-          appData.activeFilters.search;
+          appData.activeFilters.search ||
+          appData.activeFilters.untagged;
 
         // Filter visible sets
         const visibleSets = Object.values(appData.sets).filter((set) => {
           // Skip empty sets
           if (!set.patterns || set.patterns.length === 0) return false;
+
+          // If untagged filter is active, skip sets (sets should contain patterns that are tagged)
+          // TODO: this is probably janky - sets may contain untagged patterns!
+          if (appData.activeFilters.untagged) {
+            return false;
+          }
 
           // For sets with a creator filter, check if any pattern in the set matches
           if (appData.activeFilters.creators.size > 0) {
@@ -799,9 +806,14 @@ CURRENT BUG LIST (address later)
               if (!pattern) return false;
 
               return Array.from(appData.activeFilters.tags).every((tag) =>
-                pattern.tags.some(
-                  (patternTag) => patternTag.toLowerCase() === tag
-                )
+                pattern.tags.some((patternTag) => {
+                  const patternTagLower = patternTag.toLowerCase();
+                  // Check for exact match or if it's a child of the parent tag
+                  return (
+                    patternTagLower === tag ||
+                    patternTagLower.startsWith(tag + ">")
+                  );
+                })
               );
             });
 
@@ -996,10 +1008,10 @@ CURRENT BUG LIST (address later)
             gallery.appendChild(creatorSection);
           });
         } else if (sort.type === "tag") {
-          // Group by tag
+          // Group by tag with hierarchy support
           const tagGroups = {};
 
-          // Process sets
+          // Process sets first
           visibleSets.forEach((set) => {
             if (!set.patterns || set.patterns.length === 0) return;
 
@@ -1007,12 +1019,18 @@ CURRENT BUG LIST (address later)
             const tagCounts = new Map();
 
             // Count occurrences of each tag across patterns in the set
+            // For hierarchical tags, count the top-level parent tags
             set.patterns.forEach((patternId) => {
               const pattern = appData.patterns[patternId];
               if (!pattern || !pattern.tags.length) return;
 
               pattern.tags.forEach((tag) => {
-                tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+                // Get the top-level parent for hierarchical tags
+                const topLevelTag = tag.split(">")[0];
+                tagCounts.set(
+                  topLevelTag,
+                  (tagCounts.get(topLevelTag) || 0) + 1
+                );
               });
             });
 
@@ -1036,6 +1054,9 @@ CURRENT BUG LIST (address later)
               isSet: true,
               set: set,
               name: set.name, // For sorting within tag group
+              topLevelTag: primaryTag,
+              // Get the full hierarchical path for sub-sorting
+              subTags: getSetSubTags(set),
             });
 
             // Track patterns in this set
@@ -1048,21 +1069,48 @@ CURRENT BUG LIST (address later)
           filteredPatterns.forEach((pattern) => {
             if (patternsInRenderedSets.has(pattern.id)) return;
 
-            const tag = pattern.tags.length > 0 ? pattern.tags[0] : "untagged";
+            // For patterns with no tags
+            if (pattern.tags.length === 0) {
+              if (!tagGroups["untagged"]) {
+                tagGroups["untagged"] = [];
+              }
 
-            if (!tagGroups[tag]) {
-              tagGroups[tag] = [];
+              tagGroups["untagged"].push({
+                isSet: false,
+                pattern: pattern,
+                name: pattern.patternName,
+                topLevelTag: "untagged",
+                subTags: [],
+              });
+              return;
             }
 
-            tagGroups[tag].push({
+            // For each tag in the pattern, add to appropriate group
+            // We'll use the first tag's top level for grouping
+            const firstTag = pattern.tags[0];
+            const topLevelTag = firstTag.split(">")[0];
+
+            if (!tagGroups[topLevelTag]) {
+              tagGroups[topLevelTag] = [];
+            }
+
+            tagGroups[topLevelTag].push({
               isSet: false,
               pattern: pattern,
-              name: pattern.patternName, // For sorting within tag group
+              name: pattern.patternName,
+              topLevelTag: topLevelTag,
+              subTags: getPatternSubTags(pattern),
             });
           });
 
           // Sort the tag names
           const sortedTagNames = Object.keys(tagGroups).sort((a, b) => {
+            // Special case: "untagged" always at the end
+            // TODO: odd, I'd want untagged to always be at the top I think...
+            // but that might not be a great end user UX idk
+            if (a === "untagged") return sort.direction === "asc" ? 1 : -1;
+            if (b === "untagged") return sort.direction === "asc" ? -1 : 1;
+
             return sort.direction === "asc"
               ? a.toLowerCase().localeCompare(b.toLowerCase())
               : b.toLowerCase().localeCompare(a.toLowerCase());
@@ -1080,16 +1128,36 @@ CURRENT BUG LIST (address later)
             const tagHeader = document.createElement("div");
             tagHeader.className = "group-header";
             tagHeader.innerHTML = `
-              ${tagName} <span class="group-count">${tagItems.length}</span>
-            `;
+      ${tagName} <span class="group-count">${tagItems.length}</span>
+    `;
             tagSection.appendChild(tagHeader);
 
             // Create grid for this tag's patterns
             const patternsGrid = document.createElement("div");
             patternsGrid.className = "pattern-gallery";
 
-            // Sort items alphabetically within the tag group
+            // Sort items within the tag group based on their hierarchical structure
             tagItems.sort((a, b) => {
+              // First sort by sub-tag path if available
+              const aSubTags = a.subTags;
+              const bSubTags = b.subTags;
+
+              // Compare each level of the hierarchy
+              const minLength = Math.min(aSubTags.length, bSubTags.length);
+
+              for (let i = 0; i < minLength; i++) {
+                const comparison = aSubTags[i].localeCompare(bSubTags[i]);
+                if (comparison !== 0) {
+                  return comparison;
+                }
+              }
+
+              // If sub-tags match up to a point, shorter paths come first
+              if (aSubTags.length !== bSubTags.length) {
+                return aSubTags.length - bSubTags.length;
+              }
+
+              // If hierarchy is identical, sort by name
               return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
             });
 
@@ -1109,6 +1177,62 @@ CURRENT BUG LIST (address later)
             tagSection.appendChild(patternsGrid);
             gallery.appendChild(tagSection);
           });
+
+          // Helper function to get the hierarchical sub-tags of a pattern
+          function getPatternSubTags(pattern) {
+            // Get the most specific hierarchical tag (assuming first tag is primary)
+            if (!pattern.tags.length) return [];
+
+            // Find the tag with the most levels of hierarchy
+            const primaryTag = pattern.tags.reduce((deepest, current) => {
+              const deepestLevels = deepest.split(">").length;
+              const currentLevels = current.split(">").length;
+              return currentLevels > deepestLevels ? current : deepest;
+            }, pattern.tags[0]);
+
+            // Return the segments as an array
+            return primaryTag.split(">");
+          }
+
+          // Helper function to get the hierarchical sub-tags of a set
+          function getSetSubTags(set) {
+            if (!set.patterns || set.patterns.length === 0) return [];
+
+            // Count tag hierarchies across all patterns in the set
+            const tagHierarchyCounts = new Map();
+
+            set.patterns.forEach((patternId) => {
+              const pattern = appData.patterns[patternId];
+              if (!pattern || !pattern.tags.length) return;
+
+              // Find the deepest hierarchical tag in this pattern
+              const deepestTag = pattern.tags.reduce((deepest, current) => {
+                const deepestLevels = deepest.split(">").length;
+                const currentLevels = current.split(">").length;
+                return currentLevels > deepestLevels ? current : deepest;
+              }, pattern.tags[0]);
+
+              // Count occurrences of this hierarchy
+              tagHierarchyCounts.set(
+                deepestTag,
+                (tagHierarchyCounts.get(deepestTag) || 0) + 1
+              );
+            });
+
+            // Find the most common hierarchy
+            let mostCommonTag = "";
+            let maxCount = 0;
+
+            tagHierarchyCounts.forEach((count, tag) => {
+              if (count > maxCount) {
+                maxCount = count;
+                mostCommonTag = tag;
+              }
+            });
+
+            // Return the segments as an array
+            return mostCommonTag ? mostCommonTag.split(">") : [];
+          }
         } else if (sort.type === "set-size") {
           // Create a unified array of both sets and patterns
           const allItems = [];
@@ -1219,9 +1343,31 @@ CURRENT BUG LIST (address later)
 
           // Tag filters - only apply if tags filter is active
           if (appData.activeFilters.tags.size > 0) {
-            const hasMatchingTag = pattern.tags.some((tag) =>
-              appData.activeFilters.tags.has(tag.toLowerCase())
+            const hasMatchingTag = Array.from(appData.activeFilters.tags).some(
+              (filterTag) => {
+                // Simple case: direct tag match
+                if (
+                  pattern.tags.some(
+                    (patternTag) => patternTag.toLowerCase() === filterTag
+                  )
+                ) {
+                  return true;
+                }
+
+                // Hierarchical case: if filter is a parent tag, also match child tags
+                return pattern.tags.some((patternTag) => {
+                  // Convert both to lowercase for case-insensitive comparison
+                  const lowercasePatternTag = patternTag.toLowerCase();
+                  // Check if this pattern tag starts with the filter tag followed by ">"
+                  return (
+                    lowercasePatternTag.startsWith(filterTag + ">") ||
+                    // Also check for exact match (redundant with above, but keeping for clarity)
+                    lowercasePatternTag === filterTag
+                  );
+                });
+              }
             );
+
             if (!hasMatchingTag) return false;
           }
 
@@ -1536,12 +1682,22 @@ CURRENT BUG LIST (address later)
         // Selection checkbox (only visible in selection mode)
         const selectionCheckbox = appData.selectionMode
           ? `<div class="pattern-select">
-              <input type="checkbox" id="select-${pattern.id}" ${
+            <input type="checkbox" id="select-${pattern.id}" ${
               appData.selectedPatterns.has(pattern.id) ? "checked" : ""
             }>
-              <label for="select-${pattern.id}"></label>
-            </div>`
+            <label for="select-${pattern.id}"></label>
+          </div>`
           : "";
+
+        // Process tags to display only the leaf part of hierarchical tags
+        const displayTags = pattern.tags.map((tag) => {
+          const segments = tag.split(">");
+          // Return just the last segment (leaf node)
+          return segments[segments.length - 1];
+        });
+
+        // Remove duplicates (in case after trimming parent path we have duplicates)
+        const uniqueDisplayTags = [...new Set(displayTags)];
 
         const html = `
           ${selectionCheckbox}
@@ -1549,13 +1705,13 @@ CURRENT BUG LIST (address later)
           pattern.patternName
         }">
             ${creatorBadge}
-              <div class="pattern-info">
+            <div class="pattern-info">
             <div class="pattern-name">${pattern.patternName}</div>
             <div class="pattern-creator">by ${pattern.creatorName} of ${
           pattern.townName
         }</div>
             <div class="tag-list">
-              ${pattern.tags
+              ${uniqueDisplayTags
                 .map((tag) => `<span class="tag">${tag}</span>`)
                 .join("")}
             </div>
@@ -1758,28 +1914,29 @@ CURRENT BUG LIST (address later)
         modal.style.display = "flex";
 
         modal.innerHTML = `
-          <div class="modal">
-            <button class="modal-close">&times;</button>
-            <h2 class="modal-title">Edit Tags for ${appData.selectedPatterns.size} Patterns</h2>
-            
-            <div class="form-group full-width">
-              <label>Edit Tags</label>
-              <div class="tag-input" id="batch-tag-input">
-                <input type="text" placeholder="Add a tag...">
-              </div>
-              <p class="help-text">Enter each tag and press Enter or comma to add. Remove tags by clicking the × button.</p>
-            </div>
-            
-            <div class="form-group full-width" style="display: flex;">
-              <input type="checkbox" id="batch-tag-merge" checked style="width: unset; margin-right: 7px;">
-              <label>
-                Merge with existing tags (uncheck to replace all tags)
-              </label>
-            </div>
-            
-            <button class="btn" id="apply-batch-tags-btn">Apply Tags</button>
-          </div>
-        `;
+    <div class="modal">
+      <button class="modal-close">&times;</button>
+      <h2 class="modal-title">Edit Tags for ${appData.selectedPatterns.size} Patterns</h2>
+      
+      <div class="form-group full-width">
+        <label>Edit Tags</label>
+        <div class="tag-input" id="batch-tag-input">
+          <input type="text" placeholder="Add a tag...">
+        </div>
+        <p class="help-text">Enter each tag and press Enter or comma to add. Remove tags by clicking the × button.</p>
+        <p class="help-text">Use > for hierarchical tags (e.g., "clothing>shirt>long-sleeve").</p>
+      </div>
+      
+      <div class="form-group full-width" style="display: flex;">
+        <input type="checkbox" id="batch-tag-merge" checked style="width: unset; margin-right: 7px;">
+        <label>
+          Merge with existing tags (uncheck to replace all tags)
+        </label>
+      </div>
+      
+      <button class="btn" id="apply-batch-tags-btn">Apply Tags</button>
+    </div>
+  `;
 
         document.body.appendChild(modal);
 
@@ -1816,12 +1973,51 @@ CURRENT BUG LIST (address later)
               if (!pattern) return;
 
               if (mergeTags) {
+                // For each tag, ensure all parent tags are also added
+                const tagsToApply = new Set();
+
+                tags.forEach((tag) => {
+                  const segments = tag.split(">");
+                  let currentPath = "";
+
+                  for (const segment of segments) {
+                    currentPath = currentPath
+                      ? `${currentPath}>${segment}`
+                      : segment;
+                    tagsToApply.add(currentPath);
+                  }
+                });
+
                 // Merge with existing tags (avoid duplicates)
-                const newTags = [...new Set([...pattern.tags, ...tags])];
+                const existingTags = new Set(
+                  pattern.tags.map((tag) => tag.toLowerCase())
+                );
+                const newTags = [...pattern.tags];
+
+                tagsToApply.forEach((tag) => {
+                  if (!existingTags.has(tag.toLowerCase())) {
+                    newTags.push(tag);
+                  }
+                });
+
                 pattern.tags = newTags;
               } else {
-                // Replace all tags
-                pattern.tags = [...tags];
+                // Replace all tags, but still ensure hierarchical integrity
+                const tagsToApply = new Set();
+
+                tags.forEach((tag) => {
+                  const segments = tag.split(">");
+                  let currentPath = "";
+
+                  for (const segment of segments) {
+                    currentPath = currentPath
+                      ? `${currentPath}>${segment}`
+                      : segment;
+                    tagsToApply.add(currentPath);
+                  }
+                });
+
+                pattern.tags = [...tagsToApply];
               }
 
               // Update modification date
@@ -1870,27 +2066,202 @@ CURRENT BUG LIST (address later)
           }
         });
 
+        // Add autocomplete for hierarchical tags
+        input.addEventListener("input", (e) => {
+          const value = input.value.trim().toLowerCase();
+
+          // Only show suggestions if there's input and it's at least 1 character
+          if (value.length < 1) {
+            // Remove existing suggestions
+            const existingSuggestions = document.getElementById(
+              "batch-tag-suggestions"
+            );
+            if (existingSuggestions) {
+              existingSuggestions.remove();
+            }
+            return;
+          }
+
+          // Get all existing tags across all patterns
+          const allTags = new Set();
+          Object.values(appData.patterns).forEach((pattern) => {
+            pattern.tags.forEach((tag) => allTags.add(tag.toLowerCase()));
+          });
+
+          // Filter tags that match the input
+          const exactMatches = [];
+          const hierarchyMatches = [];
+
+          // Check for exact matches and hierarchy-based matches
+          allTags.forEach((tag) => {
+            // Skip if this tag already exists in the batch input
+            if (batchTagExists(tag, tagInput)) return;
+
+            // Direct matches anywhere in the tag
+            if (tag.includes(value)) {
+              exactMatches.push(tag);
+              return;
+            }
+
+            // Check if any segment in a hierarchical tag matches
+            const segments = tag.split(">");
+            for (const segment of segments) {
+              if (segment.includes(value)) {
+                hierarchyMatches.push(tag);
+                return;
+              }
+            }
+          });
+
+          // Combine matches
+          const allMatches = [...exactMatches, ...hierarchyMatches];
+
+          // Sort matches alphabetically
+          allMatches.sort((a, b) => a.localeCompare(b));
+
+          // Limit results
+          const matches = allMatches.slice(0, 5);
+
+          if (matches.length > 0) {
+            showBatchTagSuggestions(matches, tagInput, input);
+          } else {
+            // Remove suggestions if no matches
+            const existingSuggestions = document.getElementById(
+              "batch-tag-suggestions"
+            );
+            if (existingSuggestions) {
+              existingSuggestions.remove();
+            }
+          }
+        });
+
         // Focus the input field
         input.focus();
       }
 
-      // Add tag to batch tag input
-      function addBatchTag(tag, tagInput) {
-        // Check if tag already exists
-        const existingTags = Array.from(
-          tagInput.querySelectorAll(".tag-item")
-        ).map((el) =>
-          el.textContent
+      function batchTagExists(tag, tagInput) {
+        const tagElements = tagInput.querySelectorAll(".tag-item");
+        const normalizedTag = tag.toLowerCase();
+
+        return Array.from(tagElements).some((el) => {
+          const existingTag = el.textContent
             .trim()
             .replace(/\s*×\s*$/, "")
-            .toLowerCase()
+            .toLowerCase();
+          return existingTag === normalizedTag;
+        });
+      }
+
+      function showBatchTagSuggestions(suggestions, tagInput, inputElement) {
+        // Remove existing suggestions
+        const existingSuggestions = document.getElementById(
+          "batch-tag-suggestions"
         );
+        if (existingSuggestions) {
+          existingSuggestions.remove();
+        }
 
-        if (existingTags.includes(tag.toLowerCase())) return;
+        if (suggestions.length === 0) return;
 
+        // Create suggestions container
+        const suggestionsContainer = document.createElement("div");
+        suggestionsContainer.id = "batch-tag-suggestions";
+        suggestionsContainer.style.position = "absolute";
+        suggestionsContainer.style.zIndex = "1000";
+        suggestionsContainer.style.backgroundColor = "white";
+        suggestionsContainer.style.border = "1px solid var(--border-color)";
+        suggestionsContainer.style.borderRadius = "4px";
+        suggestionsContainer.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
+        suggestionsContainer.style.width = `${tagInput.offsetWidth}px`;
+        suggestionsContainer.style.maxHeight = "150px";
+        suggestionsContainer.style.overflowY = "auto";
+
+        // Position below the tag input
+        const rect = tagInput.getBoundingClientRect();
+        suggestionsContainer.style.top = `${rect.bottom + window.scrollY}px`;
+        suggestionsContainer.style.left = `${rect.left + window.scrollX}px`;
+
+        // Add suggestions
+        suggestions.forEach((suggestion) => {
+          const suggestionElement = document.createElement("div");
+
+          // Format hierarchical tags for better display
+          if (suggestion.includes(">")) {
+            const segments = suggestion.split(">");
+            const formatted = segments
+              .map(
+                (segment, index) =>
+                  `<span style="opacity:${
+                    0.6 + 0.4 * (index / segments.length)
+                  }">
+          ${index > 0 ? "› " : ""}${segment}
+        </span>`
+              )
+              .join(" ");
+            suggestionElement.innerHTML = formatted;
+          } else {
+            suggestionElement.textContent = suggestion;
+          }
+
+          suggestionElement.style.padding = "8px 12px";
+          suggestionElement.style.cursor = "pointer";
+          suggestionElement.style.borderBottom =
+            "1px solid var(--border-color)";
+
+          suggestionElement.addEventListener("mouseover", () => {
+            suggestionElement.style.backgroundColor = "var(--secondary-color)";
+          });
+
+          suggestionElement.addEventListener("mouseout", () => {
+            suggestionElement.style.backgroundColor = "white";
+          });
+
+          suggestionElement.addEventListener("click", () => {
+            addBatchTag(suggestion, tagInput);
+            inputElement.value = "";
+            suggestionsContainer.remove();
+            inputElement.focus();
+          });
+
+          suggestionsContainer.appendChild(suggestionElement);
+        });
+
+        // Add click outside to close suggestions
+        document.addEventListener("click", function closeHandler(e) {
+          if (
+            !suggestionsContainer.contains(e.target) &&
+            e.target !== inputElement
+          ) {
+            suggestionsContainer.remove();
+            document.removeEventListener("click", closeHandler);
+          }
+        });
+
+        // Add to document
+        document.body.appendChild(suggestionsContainer);
+      }
+
+      // Add tag to batch tag input
+      function addBatchTag(tag, tagInput) {
+        tag = tag.trim();
+        if (!tag) return;
+
+        // Check if tag already exists
+        if (batchTagExists(tag, tagInput)) return;
+
+        // Create tag element
         const tagElement = document.createElement("div");
         tagElement.className = "tag-item";
-        tagElement.innerHTML = `${tag} <span class="tag-remove">×</span>`;
+
+        // Add visual indication for hierarchical tags
+        if (tag.includes(">")) {
+          const segments = tag.split(">");
+          const formattedTag = segments.join(" › ");
+          tagElement.innerHTML = `${formattedTag} <span class="tag-remove">×</span>`;
+          tagElement.title = "Hierarchical tag: " + tag;
+        } else {
+          tagElement.innerHTML = `${tag} <span class="tag-remove">×</span>`;
+        }
 
         // Add click event to remove tag
         tagElement
@@ -2068,27 +2439,100 @@ CURRENT BUG LIST (address later)
 
         // Create the untagged filter HTML
         const untaggedFilterHTML = `
-          <li class="${
-            appData.activeFilters.untagged ? "active" : ""
-          }" data-filter="untagged">
-            untagged 
-            <span class="filter-count">${untaggedCount}</span>
-          </li>`;
+    <li class="${
+      appData.activeFilters.untagged ? "active" : ""
+    }" data-filter="untagged">
+      untagged 
+      <span class="filter-count">${untaggedCount}</span>
+    </li>`;
 
-        // Create tag filters HTML with untagged option first
-        const tagFiltersHTML =
-          untaggedFilterHTML +
-          Array.from(allTags.entries())
-            .sort((a, b) => b[1] - a[1])
-            .map(([tag, count]) => {
-              const isActive = appData.activeFilters.tags.has(tag);
-              return `
-              <li class="${isActive ? "active" : ""}" data-tag="${tag}">
-                ${tag} 
-                <span class="filter-count">${count}</span>
+        // Group tags into a hierarchical structure
+        const tagHierarchy = {};
+
+        Array.from(allTags.entries()).forEach(([tag, count]) => {
+          const segments = tag.split(">");
+
+          if (segments.length === 1) {
+            // This is a top-level tag
+            if (!tagHierarchy[tag]) {
+              tagHierarchy[tag] = { count: count, children: {} };
+            } else {
+              tagHierarchy[tag].count = count;
+            }
+          } else {
+            // This is a nested tag, add to parent
+            const parentTag = segments.slice(0, -1).join(">");
+            const childTag = segments[segments.length - 1];
+
+            // Ensure parent exists
+            if (!tagHierarchy[parentTag]) {
+              tagHierarchy[parentTag] = { count: 0, children: {} };
+            }
+
+            // Add child to parent
+            if (!tagHierarchy[parentTag].children[childTag]) {
+              tagHierarchy[parentTag].children[childTag] = {
+                fullTag: tag,
+                count: count,
+              };
+            } else {
+              tagHierarchy[parentTag].children[childTag].count = count;
+            }
+          }
+        });
+
+        // Render the hierarchical tags
+        let tagFiltersHTML = untaggedFilterHTML;
+
+        Object.keys(tagHierarchy)
+          .sort()
+          .forEach((tag) => {
+            const isActive = appData.activeFilters.tags.has(tag);
+            const hasChildren =
+              Object.keys(tagHierarchy[tag].children).length > 0;
+            const isParentOfActiveChild =
+              hasChildren &&
+              Object.values(tagHierarchy[tag].children).some((child) =>
+                appData.activeFilters.tags.has(child.fullTag)
+              );
+
+            // Determine if this parent should appear expanded based on if it or any of its children are active
+            const shouldExpand = isActive || isParentOfActiveChild;
+
+            tagFiltersHTML += `
+        <li class="${isActive ? "active" : ""} ${
+              hasChildren ? "tag-parent" : ""
+            }" data-tag="${tag}">
+          ${tag} 
+          <span class="filter-count">${tagHierarchy[tag].count}</span>
+        </li>`;
+
+            if (hasChildren) {
+              // Determine visibility based on whether parent or any child is active
+              const visibilityClass = shouldExpand ? "visible" : "";
+
+              tagFiltersHTML += `<div class="tag-children ${visibilityClass}">`;
+
+              Object.keys(tagHierarchy[tag].children)
+                .sort()
+                .forEach((childTag) => {
+                  const child = tagHierarchy[tag].children[childTag];
+                  const childIsActive = appData.activeFilters.tags.has(
+                    child.fullTag
+                  );
+
+                  tagFiltersHTML += `
+              <li class="${childIsActive ? "active" : ""} level-1" data-tag="${
+                    child.fullTag
+                  }">
+                ${childTag} 
+                <span class="filter-count">${child.count}</span>
               </li>`;
-            })
-            .join("");
+                });
+
+              tagFiltersHTML += `</div>`;
+            }
+          });
 
         elements.tagFilters.innerHTML =
           tagFiltersHTML || "<li>No tags available</li>";
@@ -2123,6 +2567,11 @@ CURRENT BUG LIST (address later)
                   // If this is the only active tag, clicking it should deselect it
                   appData.activeFilters.tags.delete(tag);
                   li.classList.remove("active");
+
+                  // Hide all tag-children
+                  document.querySelectorAll(".tag-children").forEach((elem) => {
+                    elem.classList.remove("visible");
+                  });
                 } else {
                   // Otherwise clear other filters and select just this one
                   appData.activeFilters.tags.clear();
@@ -2132,6 +2581,28 @@ CURRENT BUG LIST (address later)
 
                   appData.activeFilters.tags.add(tag);
                   li.classList.add("active");
+
+                  // Hide all tag-children first
+                  document.querySelectorAll(".tag-children").forEach((elem) => {
+                    elem.classList.remove("visible");
+                  });
+
+                  // For parent tags, toggle visibility of children
+                  if (li.classList.contains("tag-parent")) {
+                    const nextElement = li.nextElementSibling;
+                    if (
+                      nextElement &&
+                      nextElement.classList.contains("tag-children")
+                    ) {
+                      nextElement.classList.toggle("visible");
+                    }
+                  } else {
+                    // For child tags, ensure parent's children remain visible
+                    const parentContainer = li.closest(".tag-children");
+                    if (parentContainer) {
+                      parentContainer.classList.add("visible");
+                    }
+                  }
                 }
               }
 
@@ -2170,6 +2641,11 @@ CURRENT BUG LIST (address later)
                   .forEach((item) => {
                     item.classList.remove("active");
                   });
+
+                // Hide all children tags
+                document.querySelectorAll(".tag-children").forEach((elem) => {
+                  elem.classList.remove("visible");
+                });
               } else {
                 untaggedFilter.classList.remove("active");
               }
@@ -2415,11 +2891,46 @@ CURRENT BUG LIST (address later)
           filtersList.appendChild(untaggedFilter);
         }
 
-        // Add tag filters
+        // Add tag filters - group hierarchical tags by parent
+        const tagGroups = new Map();
+
+        // Group tags by their top-level parent
         appData.activeFilters.tags.forEach((tag) => {
+          const segments = tag.split(">");
+          const topLevelTag = segments[0];
+
+          if (!tagGroups.has(topLevelTag)) {
+            tagGroups.set(topLevelTag, []);
+          }
+
+          tagGroups.get(topLevelTag).push(tag);
+        });
+
+        // Create filter elements for each tag group
+        tagGroups.forEach((tags, topLevelTag) => {
           const tagFilter = document.createElement("span");
           tagFilter.className = "active-filter tag-filter";
-          tagFilter.innerHTML = `🏷️ ${tag} <span class="filter-remove" data-type="tag" data-value="${tag}">×</span>`;
+
+          // Sort tags by hierarchy depth
+          tags.sort((a, b) => a.split(">").length - b.split(">").length);
+
+          // Format tags nicely
+          let tagContent = `🏷️ ${topLevelTag}`;
+
+          // Add sub-tags if present (skip duplicates and top level)
+          const subTags = tags.filter(
+            (t) => t !== topLevelTag && t.startsWith(topLevelTag + ">")
+          );
+
+          // TODO: would be nicer if it said the subtag name
+          if (subTags.length > 0) {
+            tagContent += ` (${subTags.length} sub-tag${
+              subTags.length > 1 ? "s" : ""
+            })`;
+          }
+
+          tagFilter.innerHTML = `${tagContent} <span class="filter-remove" data-type="tag" data-value="${topLevelTag}">×</span>`;
+          tagFilter.title = tags.join("\n");
           filtersList.appendChild(tagFilter);
         });
 
@@ -2459,7 +2970,12 @@ CURRENT BUG LIST (address later)
                 appData.activeFilters.search = "";
                 document.getElementById("pattern-search").value = "";
               } else if (type === "tag") {
-                appData.activeFilters.tags.delete(value);
+                // For hierarchical tags, remove the top level and all children
+                appData.activeFilters.tags.forEach((tag) => {
+                  if (tag === value || tag.startsWith(value + ">")) {
+                    appData.activeFilters.tags.delete(tag);
+                  }
+                });
               } else if (type === "creator") {
                 appData.activeFilters.creators.delete(value);
               } else if (type === "set") {
@@ -2589,10 +3105,20 @@ CURRENT BUG LIST (address later)
           }
         });
 
-        // Add autocomplete for tags
+        // Add autocomplete for tags with hierarchical awareness
         newInput.addEventListener("input", (e) => {
           const value = newInput.value.trim().toLowerCase();
-          if (value.length < 2) return;
+
+          // Only show suggestions if there's input and it's at least 1 character
+          if (value.length < 1) {
+            // Remove existing suggestions if input is cleared
+            const existingSuggestions =
+              document.getElementById("tag-suggestions");
+            if (existingSuggestions) {
+              existingSuggestions.remove();
+            }
+            return;
+          }
 
           // Get all existing tags from all patterns
           const allTags = new Set();
@@ -2601,122 +3127,173 @@ CURRENT BUG LIST (address later)
           });
 
           // Filter tags that match the input
-          const matches = Array.from(allTags)
-            .filter((tag) => tag.includes(value) && !tagExists(tag))
-            .slice(0, 5); // Limit to 5 suggestions
+          const matches = [];
 
-          // Show autocomplete suggestions
-          showTagSuggestions(matches);
+          // Try exact matches first
+          allTags.forEach((tag) => {
+            if (tag.includes(value) && !tagExists(tag)) {
+              matches.push(tag);
+            }
+          });
+
+          // Then try hierarchical completions
+          // For example, if input is "shirt", suggest "clothing>shirt" if it exists
+          allTags.forEach((tag) => {
+            const segments = tag.split(">");
+            const lastSegment = segments[segments.length - 1];
+
+            if (
+              lastSegment.includes(value) &&
+              !matches.includes(tag) &&
+              !tagExists(tag)
+            ) {
+              matches.push(tag);
+            }
+          });
+
+          // Sort matches alphabetically
+          matches.sort((a, b) => a.localeCompare(b));
+
+          // Show top 5 suggestions
+          showTagSuggestions(matches.slice(0, 5));
         });
 
         // Focus the input field
         newInput.focus();
+      }
 
-        // Function to add a new tag
-        function addTag(tag) {
-          // Check if tag already exists
-          if (tagExists(tag)) return;
+      // Function to add a new tag
+      function addTag(tag) {
+        // Skip empty tags
+        tag = tag.trim();
+        if (!tag) return;
 
-          const tagElement = document.createElement("div");
-          tagElement.className = "tag-item";
-          tagElement.innerHTML = `${tag} <span class="tag-remove">×</span>`;
+        const tagInput = document.getElementById("tag-input");
 
-          // Add click event to remove tag
-          tagElement
-            .querySelector(".tag-remove")
-            .addEventListener("click", (e) => {
-              e.stopPropagation();
-              tagInput.removeChild(tagElement);
-            });
+        // Check if tag already exists
+        if (tagExists(tag)) return;
 
-          tagInput.insertBefore(tagElement, newInput);
+        // Parse hierarchical tag
+        const segments = tag.split(">");
+
+        // Generate all parent tags that need to be included
+        const tagsToAdd = [];
+        let currentPath = "";
+
+        for (const segment of segments) {
+          currentPath = currentPath ? `${currentPath}>${segment}` : segment;
+          tagsToAdd.push(currentPath);
         }
 
-        // Check if tag already exists in the input
-        function tagExists(tag) {
-          const tagElements = tagInput.querySelectorAll(".tag-item");
-          const normalizedTag = tag.toLowerCase();
+        // Add all necessary tags (avoiding duplicates)
+        for (const tagToAdd of tagsToAdd) {
+          if (!tagExists(tagToAdd)) {
+            const tagElement = document.createElement("div");
+            tagElement.className = "tag-item";
+            tagElement.innerHTML = `${tagToAdd} <span class="tag-remove">×</span>`;
 
-          return Array.from(tagElements).some((el) => {
-            const existingTag = el.textContent
-              .trim()
-              .replace(/\s*×\s*$/, "")
-              .toLowerCase();
-            return existingTag === normalizedTag;
-          });
-        }
+            // Add click event to remove tag
+            tagElement
+              .querySelector(".tag-remove")
+              .addEventListener("click", (e) => {
+                e.stopPropagation();
+                tagInput.removeChild(tagElement);
+              });
 
-        // Show tag suggestions
-        function showTagSuggestions(suggestions) {
-          // Remove existing suggestions
-          const existingSuggestions =
-            document.getElementById("tag-suggestions");
-          if (existingSuggestions) {
-            existingSuggestions.remove();
+            tagInput.insertBefore(tagElement, tagInput.querySelector("input"));
           }
-
-          if (suggestions.length === 0) return;
-
-          // Create suggestions container
-          const suggestionsContainer = document.createElement("div");
-          suggestionsContainer.id = "tag-suggestions";
-          suggestionsContainer.style.position = "absolute";
-          suggestionsContainer.style.zIndex = "1000";
-          suggestionsContainer.style.backgroundColor = "white";
-          suggestionsContainer.style.border = "1px solid var(--border-color)";
-          suggestionsContainer.style.borderRadius = "4px";
-          suggestionsContainer.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-          suggestionsContainer.style.width = `${tagInput.offsetWidth}px`;
-          suggestionsContainer.style.maxHeight = "150px";
-          suggestionsContainer.style.overflowY = "auto";
-
-          // Position below the tag input
-          const rect = tagInput.getBoundingClientRect();
-          suggestionsContainer.style.top = `${rect.bottom + window.scrollY}px`;
-          suggestionsContainer.style.left = `${rect.left + window.scrollX}px`;
-
-          // Add suggestions
-          suggestions.forEach((suggestion) => {
-            const suggestionElement = document.createElement("div");
-            suggestionElement.textContent = suggestion;
-            suggestionElement.style.padding = "8px 12px";
-            suggestionElement.style.cursor = "pointer";
-            suggestionElement.style.borderBottom =
-              "1px solid var(--border-color)";
-
-            suggestionElement.addEventListener("mouseover", () => {
-              suggestionElement.style.backgroundColor =
-                "var(--secondary-color)";
-            });
-
-            suggestionElement.addEventListener("mouseout", () => {
-              suggestionElement.style.backgroundColor = "white";
-            });
-
-            suggestionElement.addEventListener("click", () => {
-              addTag(suggestion);
-              newInput.value = "";
-              suggestionsContainer.remove();
-              newInput.focus();
-            });
-
-            suggestionsContainer.appendChild(suggestionElement);
-          });
-
-          // Add click outside to close suggestions
-          document.addEventListener("click", function closeHandler(e) {
-            if (
-              !suggestionsContainer.contains(e.target) &&
-              e.target !== newInput
-            ) {
-              suggestionsContainer.remove();
-              document.removeEventListener("click", closeHandler);
-            }
-          });
-
-          // Add to document
-          document.body.appendChild(suggestionsContainer);
         }
+      }
+
+      // Check if tag already exists in the input
+      function tagExists(tag) {
+        const tagInput = document.getElementById("tag-input");
+        const tagElements = tagInput.querySelectorAll(".tag-item");
+        const normalizedTag = tag.toLowerCase();
+
+        return Array.from(tagElements).some((el) => {
+          const existingTag = el.textContent
+            .trim()
+            .replace(/\s*×\s*$/, "")
+            .toLowerCase();
+          return existingTag === normalizedTag;
+        });
+      }
+
+      // Show tag suggestions
+      function showTagSuggestions(suggestions) {
+        // Remove existing suggestions
+        const existingSuggestions = document.getElementById("tag-suggestions");
+        if (existingSuggestions) {
+          existingSuggestions.remove();
+        }
+
+        if (suggestions.length === 0) return;
+
+        const tagInput = document.getElementById("tag-input");
+
+        // Create suggestions container
+        const suggestionsContainer = document.createElement("div");
+        suggestionsContainer.id = "tag-suggestions";
+        suggestionsContainer.className = "tag-suggestions";
+
+        // Position below the tag input
+        const rect = tagInput.getBoundingClientRect();
+        suggestionsContainer.style.position = "absolute";
+        suggestionsContainer.style.top = `${rect.bottom + window.scrollY}px`;
+        suggestionsContainer.style.left = `${rect.left + window.scrollX}px`;
+        suggestionsContainer.style.width = `${tagInput.offsetWidth}px`;
+        suggestionsContainer.style.zIndex = "1000";
+        suggestionsContainer.style.backgroundColor = "white";
+        suggestionsContainer.style.border = "1px solid var(--border-color)";
+        suggestionsContainer.style.borderRadius = "4px";
+        suggestionsContainer.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
+        suggestionsContainer.style.maxHeight = "200px";
+        suggestionsContainer.style.overflowY = "auto";
+
+        // Add suggestions
+        suggestions.forEach((suggestion) => {
+          const suggestionElement = document.createElement("div");
+          suggestionElement.className = "tag-suggestion-item";
+          suggestionElement.textContent = suggestion;
+          suggestionElement.style.padding = "8px 12px";
+          suggestionElement.style.cursor = "pointer";
+          suggestionElement.style.borderBottom =
+            "1px solid var(--border-color)";
+
+          // Hover states
+          suggestionElement.addEventListener("mouseover", () => {
+            suggestionElement.style.backgroundColor =
+              "var(--secondary-color-light, #f0f0f0)";
+          });
+
+          suggestionElement.addEventListener("mouseout", () => {
+            suggestionElement.style.backgroundColor = "";
+          });
+
+          suggestionElement.addEventListener("click", () => {
+            addTag(suggestion);
+            tagInput.querySelector("input").value = "";
+            suggestionsContainer.remove();
+            tagInput.querySelector("input").focus();
+          });
+
+          suggestionsContainer.appendChild(suggestionElement);
+        });
+
+        // Add click outside to close suggestions
+        document.addEventListener("click", function closeHandler(e) {
+          if (
+            !suggestionsContainer.contains(e.target) &&
+            e.target !== tagInput.querySelector("input")
+          ) {
+            suggestionsContainer.remove();
+            document.removeEventListener("click", closeHandler);
+          }
+        });
+
+        // Add to document
+        document.body.appendChild(suggestionsContainer);
       }
 
       // Save pattern changes
