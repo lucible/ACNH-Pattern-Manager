@@ -396,3 +396,14 @@
   display: flex;
   gap: 10px;
 }
+
+/* Set Selection Styles */
+/* Disabled button style */
+.btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Style for partially selected sets */
+.pattern-card.set-card.partially-selected {
+  outline: 2px dashed var(--primary-color);
+}

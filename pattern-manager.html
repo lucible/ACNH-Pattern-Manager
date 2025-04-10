@@ -1456,7 +1456,7 @@ CURRENT BUG LIST (address later)
         selectionPanel.innerHTML = `
           <div class="selection-count">0 patterns selected</div>
           <div class="selection-actions">
-            <button id="add-tags-btn" class="btn btn-small">Add Tags</button>
+            <button id="add-tags-btn" class="btn btn-small">Edit Tags</button>
             <button id="create-set-btn" class="btn btn-small">Create Set</button>
           </div>
           <button id="clear-selection-btn" class="btn btn-small btn-secondary">Clear</button>
@@ -1601,19 +1601,40 @@ CURRENT BUG LIST (address later)
         const item = document.querySelector(
           `.pattern-card[data-id="${patternId}"]`
         );
-        if (item && item.getAttribute("data-type") === "set") {
-          // If it's a set, don't allow selection
-          showNotification(
-            "Sets cannot be selected individually. Please select patterns instead.",
-            "error"
-          );
-          return;
-        }
+        const isSet = item && item.getAttribute("data-type") === "set";
 
-        if (appData.selectedPatterns.has(patternId)) {
-          appData.selectedPatterns.delete(patternId);
+        if (isSet) {
+          const setId = patternId;
+          const set = appData.sets[setId];
+
+          if (!set || !set.patterns || set.patterns.length === 0) {
+            return; // Invalid set or empty set
+          }
+
+          // Toggle the selection state based on first pattern in set
+          const firstPatternId = set.patterns[0];
+          const allSelected = set.patterns.every((id) =>
+            appData.selectedPatterns.has(id)
+          );
+
+          if (allSelected) {
+            // If all patterns in the set are selected, deselect them all
+            set.patterns.forEach((patternId) => {
+              appData.selectedPatterns.delete(patternId);
+            });
+          } else {
+            // Otherwise, select all patterns in the set
+            set.patterns.forEach((patternId) => {
+              appData.selectedPatterns.add(patternId);
+            });
+          }
         } else {
-          appData.selectedPatterns.add(patternId);
+          // Regular pattern selection toggle
+          if (appData.selectedPatterns.has(patternId)) {
+            appData.selectedPatterns.delete(patternId);
+          } else {
+            appData.selectedPatterns.add(patternId);
+          }
         }
 
         // Update UI
@@ -1627,20 +1648,40 @@ CURRENT BUG LIST (address later)
 
       // Update selection UI elements
       function updateSelectionUI() {
-        // Update card styling
+        // Update pattern card styling
         document.querySelectorAll(".pattern-card").forEach((card) => {
           const patternId = card.getAttribute("data-id");
           const isSet = card.getAttribute("data-type") === "set";
 
-          // Don't show sets as selected even if they're in the selectedPatterns set
-          if (appData.selectedPatterns.has(patternId) && !isSet) {
-            card.classList.add("selected");
-            const checkbox = card.querySelector(`#select-${patternId}`);
-            if (checkbox) checkbox.checked = true;
+          if (isSet) {
+            // For sets, check if all patterns in the set are selected
+            const set = appData.sets[patternId];
+            if (set && set.patterns && set.patterns.length > 0) {
+              const allSelected = set.patterns.every((id) =>
+                appData.selectedPatterns.has(id)
+              );
+
+              if (allSelected) {
+                card.classList.add("selected");
+                const checkbox = card.querySelector(`#select-${patternId}`);
+                if (checkbox) checkbox.checked = true;
+              } else {
+                card.classList.remove("selected");
+                const checkbox = card.querySelector(`#select-${patternId}`);
+                if (checkbox) checkbox.checked = false;
+              }
+            }
           } else {
-            card.classList.remove("selected");
-            const checkbox = card.querySelector(`#select-${patternId}`);
-            if (checkbox) checkbox.checked = false;
+            // Regular pattern
+            if (appData.selectedPatterns.has(patternId)) {
+              card.classList.add("selected");
+              const checkbox = card.querySelector(`#select-${patternId}`);
+              if (checkbox) checkbox.checked = true;
+            } else {
+              card.classList.remove("selected");
+              const checkbox = card.querySelector(`#select-${patternId}`);
+              if (checkbox) checkbox.checked = false;
+            }
           }
         });
 
@@ -1653,6 +1694,29 @@ CURRENT BUG LIST (address later)
           panel.querySelector(
             ".selection-count"
           ).textContent = `${count} pattern${count !== 1 ? "s" : ""} selected`;
+
+          // Check if any sets are selected by looking at sets where all their patterns are selected
+          const setsSelected = Object.values(appData.sets).some(
+            (set) =>
+              set.patterns &&
+              set.patterns.length > 0 &&
+              set.patterns.every((id) => appData.selectedPatterns.has(id))
+          );
+
+          // Disable "Create Set" button if any sets are completely selected
+          const createSetBtn = panel.querySelector("#create-set-btn");
+          if (createSetBtn) {
+            createSetBtn.disabled = setsSelected;
+            createSetBtn.title = setsSelected
+              ? "Cannot add sets to sets"
+              : "Create a new set with selected patterns";
+
+            if (setsSelected) {
+              createSetBtn.classList.add("disabled");
+            } else {
+              createSetBtn.classList.remove("disabled");
+            }
+          }
         } else {
           panel.classList.remove("active");
         }
@@ -1668,6 +1732,26 @@ CURRENT BUG LIST (address later)
       function batchAddTags() {
         if (appData.selectedPatterns.size === 0) return;
 
+        // Get the selected patterns
+        const selectedPatternIds = Array.from(appData.selectedPatterns);
+        const selectedPatterns = selectedPatternIds
+          .map((id) => appData.patterns[id])
+          .filter((pattern) => pattern);
+
+        if (selectedPatterns.length === 0) return;
+
+        // Find common tags among all selected patterns
+        let commonTags = [...selectedPatterns[0].tags];
+
+        // Keep only tags that exist in all selected patterns
+        for (let i = 1; i < selectedPatterns.length; i++) {
+          commonTags = commonTags.filter((tag) =>
+            selectedPatterns[i].tags.some(
+              (patternTag) => patternTag.toLowerCase() === tag.toLowerCase()
+            )
+          );
+        }
+
         // Create modal for tag input
         const modal = document.createElement("div");
         modal.className = "modal-backdrop";
@@ -1676,19 +1760,19 @@ CURRENT BUG LIST (address later)
         modal.innerHTML = `
           <div class="modal">
             <button class="modal-close">&times;</button>
-            <h2 class="modal-title">Add Tags to ${appData.selectedPatterns.size} Patterns</h2>
+            <h2 class="modal-title">Edit Tags for ${appData.selectedPatterns.size} Patterns</h2>
             
-            <div class="form-group">
-              <label>Enter Tags</label>
+            <div class="form-group full-width">
+              <label>Edit Tags</label>
               <div class="tag-input" id="batch-tag-input">
                 <input type="text" placeholder="Add a tag...">
               </div>
-              <p class="help-text">Enter each tag and press Enter or comma to add</p>
+              <p class="help-text">Enter each tag and press Enter or comma to add. Remove tags by clicking the × button.</p>
             </div>
             
-            <div class="form-group">
+            <div class="form-group full-width" style="display: flex;">
+              <input type="checkbox" id="batch-tag-merge" checked style="width: unset; margin-right: 7px;">
               <label>
-                <input type="checkbox" id="batch-tag-merge" checked>
                 Merge with existing tags (uncheck to replace all tags)
               </label>
             </div>
@@ -1703,6 +1787,11 @@ CURRENT BUG LIST (address later)
         const tagInput = modal.querySelector("#batch-tag-input");
         setupBatchTagInput(tagInput);
 
+        // Add common tags to the input
+        commonTags.forEach((tag) => {
+          addBatchTag(tag, tagInput);
+        });
+
         // Close button
         modal.querySelector(".modal-close").addEventListener("click", () => {
           document.body.removeChild(modal);
@@ -1715,11 +1804,6 @@ CURRENT BUG LIST (address later)
             const mergeTags =
               document.getElementById("batch-tag-merge").checked;
             const tagElements = tagInput.querySelectorAll(".tag-item");
-
-            if (tagElements.length === 0) {
-              showNotification("Please add at least one tag", "error");
-              return;
-            }
 
             // Get tags from UI
             const tags = Array.from(tagElements).map((el) =>
@@ -4014,8 +4098,23 @@ CURRENT BUG LIST (address later)
 
         if (patterns.length === 0) return null;
 
+        // Check if all patterns in the set are selected
+        const allSelected =
+          patterns.length > 0 &&
+          patterns.every((pattern) => appData.selectedPatterns.has(pattern.id));
+
         // Get creator info
         const creatorInfo = getSetCreatorInfo(set.patterns);
+
+        // Selection checkbox (only visible in selection mode)
+        const selectionCheckbox = appData.selectionMode
+          ? `<div class="pattern-select">
+        <input type="checkbox" id="select-${set.id}" ${
+              allSelected ? "checked" : ""
+            }>
+        <label for="select-${set.id}"></label>
+      </div>`
+          : "";
 
         let thumbnailsHTML = "";
 
@@ -4037,28 +4136,28 @@ CURRENT BUG LIST (address later)
 
           // Create grid preview with proper sizing and class
           thumbnailsHTML = `<div class="set-grid-preview ${gridClass}" 
-                        style="--rows: ${rows}; --cols: ${cols}; 
-                        grid-template-rows: repeat(${rows}, 1fr); 
-                        grid-template-columns: repeat(${cols}, 1fr);">`;
+                  style="--rows: ${rows}; --cols: ${cols}; 
+                  grid-template-rows: repeat(${rows}, 1fr); 
+                  grid-template-columns: repeat(${cols}, 1fr);">`;
 
           // Add patterns in order
           for (let i = 0; i < Math.min(rows * cols, patterns.length); i++) {
             const pattern = patterns[i];
             thumbnailsHTML += `
-              <div class="set-grid-item">
-                <img src="${getPatternThumbnailSrc(pattern)}" 
-                  alt="${pattern.patternName}" class="pixel-art-image">
-              </div>
-            `;
+        <div class="set-grid-item">
+          <img src="${getPatternThumbnailSrc(pattern)}" 
+            alt="${pattern.patternName}" class="pixel-art-image">
+        </div>
+      `;
           }
 
           // Fill in empty spaces if the grid isn't complete
           for (let i = patterns.length; i < rows * cols; i++) {
             thumbnailsHTML += `
-              <div class="set-grid-item empty">
-                <div class="empty-grid-item"></div>
-              </div>
-            `;
+        <div class="set-grid-item empty">
+          <div class="empty-grid-item"></div>
+        </div>
+      `;
           }
 
           thumbnailsHTML += "</div>";
@@ -4070,46 +4169,52 @@ CURRENT BUG LIST (address later)
           for (let i = 0; i < Math.min(3, patterns.length); i++) {
             const pattern = patterns[i];
             thumbnailsHTML += `
-              <div class="set-collection-item">
-                <img src="${getPatternThumbnailSrc(pattern)}" 
-                  alt="${pattern.patternName}" class="pixel-art-image">
-              </div>
-            `;
+        <div class="set-collection-item">
+          <img src="${getPatternThumbnailSrc(pattern)}" 
+            alt="${pattern.patternName}" class="pixel-art-image">
+        </div>
+      `;
           }
 
           // If there are more than 3 patterns, add the "..." item
           if (patterns.length > 3) {
             thumbnailsHTML += `
-              <div class="set-collection-item more">
-                <div class="more-patterns">+${patterns.length - 3} more</div>
-              </div>
-            `;
+        <div class="set-collection-item more">
+          <div class="more-patterns">+${patterns.length - 3} more</div>
+        </div>
+      `;
           }
 
           thumbnailsHTML += "</div>";
         }
 
+        // Add selected class if all patterns in the set are selected
+        if (allSelected) {
+          card.classList.add("selected");
+        }
+
         const html = `
-          <div class="set-thumbnail">
-            ${thumbnailsHTML}
-          </div>
-          <div class="pattern-info">
-            <div class="pattern-name">${
-              set.name
-            } <span class="set-badge">Set</span></div>
-            <div class="pattern-creator">by ${creatorInfo.name} of ${
+    ${selectionCheckbox}
+    <div class="set-thumbnail">
+      ${thumbnailsHTML}
+    </div>
+    <div class="pattern-info">
+      <div class="pattern-name">${
+        set.name
+      } <span class="set-badge">Set</span></div>
+      <div class="pattern-creator">by ${creatorInfo.name} of ${
           creatorInfo.town
         }</div>
-            <div class="set-count">${patterns.length} pattern${
+      <div class="set-count">${patterns.length} pattern${
           patterns.length !== 1 ? "s" : ""
         }</div>
-            ${
-              set.gridSize
-                ? `<div class="set-grid-size">${set.gridSize} grid</div>`
-                : ""
-            }
-          </div>
-        `;
+      ${
+        set.gridSize
+          ? `<div class="set-grid-size">${set.gridSize} grid</div>`
+          : ""
+      }
+    </div>
+  `;
 
         card.innerHTML = html;
 
@@ -4118,7 +4223,6 @@ CURRENT BUG LIST (address later)
           // Check if clicking on checkbox
           if (e.target.type === "checkbox" || e.target.tagName === "LABEL") {
             e.stopPropagation();
-            e.preventDefault(); // Prevent checkbox from being checked
             return;
           }
 
@@ -4128,12 +4232,9 @@ CURRENT BUG LIST (address later)
             return;
           }
 
-          // If in selection mode, show a notification that sets cannot be selected
+          // If in selection mode or Ctrl/Cmd clicking, toggle selection of all patterns in set
           if (appData.selectionMode || e.ctrlKey || e.metaKey) {
-            showNotification(
-              "Sets cannot be selected individually. Please select patterns instead.",
-              "error"
-            );
+            togglePatternSelection(set.id);
             e.preventDefault();
           }
         });
@@ -4143,12 +4244,7 @@ CURRENT BUG LIST (address later)
         if (checkbox) {
           checkbox.addEventListener("change", (e) => {
             e.stopPropagation();
-            e.preventDefault(); // Prevent checkbox from being checked
-            checkbox.checked = false; // Uncheck the checkbox
-            showNotification(
-              "Sets cannot be selected individually. Please select patterns instead.",
-              "error"
-            );
+            togglePatternSelection(set.id);
           });
         }
 
@@ -4537,7 +4633,7 @@ CURRENT BUG LIST (address later)
                 </select>
               </div>
               
-              <div class="form-group">
+              <div class="form-group full-width">
                 <label for="creator-notes-input">Notes</label>
                 <textarea id="creator-notes-input" rows="4">${
                   creator.notes || ""
