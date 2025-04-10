@@ -1,3 +1,4 @@
+/* Set Tab Base Layout */
 .set-manager {
   margin-top: 20px;
   display: flex;
@@ -5,6 +6,7 @@
   gap: 15px;
 }
 
+/* Set Card Base */
 .set-item {
   background-color: white;
   padding: 15px;
@@ -14,6 +16,7 @@
   width: 290px;
 }
 
+/* Pattern Display Within Card */
 .set-patterns {
   display: flex;
   gap: 10px;
@@ -22,7 +25,6 @@
   padding-bottom: 10px;
   flex-wrap: wrap;
 }
-
 .set-pattern {
   width: 80px;
   height: 80px;
@@ -31,7 +33,6 @@
   cursor: move;
   image-rendering: pixelated;
 }
-
 .set-pattern-item {
   display: flex;
   align-items: center;
@@ -47,6 +48,18 @@
   height: 64px;
   margin-right: 10px;
   border: 1px solid var(--border-color);
+}
+
+/* Edit Set Modal */
+.set-patterns-container {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 10px;
+  background: var(--secondary-color);
+  min-height: 100px;
+}
+.set-pattern-item.dragging {
+  opacity: 0.5;
 }
 .pattern-order {
   position: absolute;
@@ -78,17 +91,6 @@
   font-size: 16px;
   line-height: 1;
 }
-.set-pattern-item.dragging {
-  opacity: 0.5;
-}
-.set-patterns-container {
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  padding: 10px;
-  background: var(--secondary-color);
-  min-height: 100px;
-}
-
 
 /* Add Pattern Modal */
 .creator-filter-info {

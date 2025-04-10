@@ -1,29 +1,28 @@
+/* Pattern Gallery Base Layout */
 .pattern-gallery {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
 }
 
+/* Pattern Card Base */
 .pattern-card {
   background-color: white;
   border-radius: 8px;
   overflow: hidden;
   border-bottom: 2px solid var(--primary-color);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, border 0.2s;
   width: 200px;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
-
 .pattern-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.pattern-card.selected:hover {
-  transform: translateY(-5px);
-}
-
+/* Pattern Card Thumbnail */
 .pattern-thumbnail {
   width: 100%;
   height: 200px;
@@ -36,58 +35,54 @@
   -ms-interpolation-mode: nearest-neighbor; /* IE (deprecated) */
 }
 
+/* Pattern Card Metadata */
 .pattern-info {
   padding: 12px;
 }
-
 .pattern-name {
   font-weight: bold;
   margin-bottom: 5px;
   font-size: 1.1rem;
 }
-
 .pattern-creator {
   color: #666;
   font-size: 0.9rem;
   margin-bottom: 8px;
 }
 
+/* Pattern Card Tag Display */
 .tag-list {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
   margin-top: 8px;
 }
-
 .tag {
   background-color: var(--secondary-color);
   padding: 3px 8px;
   border-radius: 12px;
   font-size: 0.8rem;
 }
-
-/* Pattern Details Modal */
-.pattern-detail {
-  display: flex;
-  gap: 20px;
-}
-
-.pattern-image {
-  flex: 0 0 250px;
-}
-
-.pattern-image img {
+.verified-badge,
+.plagiarist-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
   width: 100%;
-  height: auto;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  padding: 2px 15px;
+  font-weight: bold;
+  vertical-align: middle;
+}
+.verified-badge {
+  /* border-top: 2px solid #2ecc71; */
+  border-bottom: 2px solid #2ecc71;
+}
+.plagiarist-badge {
+  /* border-top: 2px solid #e74c3c; */
+  border-bottom: 2px solid #e74c3c;
 }
 
-.pattern-details {
-  flex: 1;
-}
-
-/* Set Cards */
+/* Set Card Specific Styles */
 .set-card {
   position: relative;
 }
@@ -112,41 +107,35 @@
 .set-grid-preview.horizontal-grid {
   align-self: center;
   margin: 0 auto;
-  display: grid;
-  grid-template-rows: 1fr;
+  grid-template-columns: 1fr;
 }
 /* Specific styles for 2x1 grids */
 .set-grid-preview.horizontal-grid[style*="--cols: 2"] {
-  height: 50%; /* Taller height for 2x1 grids */
+  height: 50%;
   grid-template-columns: repeat(2, 1fr);
 }
 /* Specific styles for 3x1 grids */
 .set-grid-preview.horizontal-grid[style*="--cols: 3"] {
-  height: 33%; /* Original height for 3x1 grids */
+  height: 33%;
   grid-template-columns: repeat(3, 1fr);
 }
 /* Base styles for vertical grids */
 .set-grid-preview.vertical-grid {
   align-self: center;
   margin: 0 auto;
-  display: grid;
   grid-template-columns: 1fr;
 }
 /* Specific styles for 1x2 grids */
 .set-grid-preview.vertical-grid[style*="--rows: 2"] {
-  width: 50%; /* Wider width for 1x2 grids */
+  width: 50%;
   grid-template-rows: repeat(2, 1fr);
 }
 /* Specific styles for 1x3 grids */
 .set-grid-preview.vertical-grid[style*="--rows: 3"] {
-  width: 33%; /* Original width for 1x3 grids */
+  width: 33%;
   grid-template-rows: repeat(3, 1fr);
 }
-/* Square grids (e.g., 2x2, 3x3) */
-.set-grid-preview.square-grid {
-  width: 100%;
-  height: 100%;
-}
+/* Set Grid Preview Images */
 .set-grid-item {
   width: 100%;
   height: 100%;
@@ -165,6 +154,7 @@
 .set-grid-item.empty {
   background-color: var(--secondary-color);
 }
+/* Set Collection Styles (Non-grid) */
 .set-collection-preview {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -215,40 +205,22 @@
   color: #666;
 }
 
-/* Grouped Results */
-.pattern-group-section {
-  margin-bottom: 20px;
-  width: 100%;
-}
-/* Group headers styling */
-.group-header {
-  background-color: var(--secondary-color);
-  padding: 10px 15px;
-  margin: 15px 0 20px 0;
-  border-radius: 4px;
-  font-weight: bold;
+/* Pattern Details Modal */
+.pattern-detail {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 2px solid var(--primary-color);
-  font-size: 1.5rem;
+  gap: 20px;
 }
-/* First group header should have smaller top margin */
-.group-header:first-of-type {
-  margin-top: 0;
+.pattern-image {
+  flex: 0 0 250px;
 }
-
-.group-header .group-count {
-  background-color: var(--primary-color);
-  color: white;
-  border-radius: 50%;
-  padding: 2px 8px;
-  font-size: 0.9rem;
-  min-width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.pattern-image img {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+.pattern-details {
+  flex: 1;
 }
 
 /* Set Detail Modal */
@@ -312,7 +284,50 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Pattern card selection styles */
+
+/* Grouped Results */
+.pattern-group-section {
+  margin-bottom: 20px;
+  width: 100%;
+}
+.group-header {
+  background-color: var(--secondary-color);
+  padding: 10px 15px;
+  margin: 15px 0 20px 0;
+  border-radius: 4px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--primary-color);
+  font-size: 1.5rem;
+}
+/* First group header should have smaller top margin */
+.group-header:first-of-type {
+  margin-top: 0;
+}
+.group-header .group-count {
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  padding: 2px 8px;
+  font-size: 0.9rem;
+  min-width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Pattern Card Selection Mode Button */
+#selection-mode-btn.active {
+  background-color: var(--primary-color);
+  color: white;
+  border: unset;
+  box-shadow: 0 2px 0 0 rgba(48, 138, 182, 0.9);
+}
+
+/* Pattern Card Selection */
 .pattern-select {
   position: absolute;
   top: 10px;
@@ -322,28 +337,14 @@
   border-radius: 2px;
   display: flex;
   justify-content: center;
-}
-/* Selection mode button */
-#selection-mode-btn.active {
-  background-color: var(--primary-color);
-  color: white;
+  z-index: 10;
 }
 .selection-icon {
   margin-right: 5px;
 }
-.pattern-card {
-  position: relative;
-}
 .pattern-card.selected {
   box-shadow: 0 0 0 3px var(--primary-color);
   border: none;
-  transition: border 0.2s, box-shadow 0.2s;
-}
-.pattern-select {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
 }
 .pattern-select input[type="checkbox"] {
   width: 20px;
@@ -351,7 +352,7 @@
   cursor: pointer;
 }
 
-/* Selection panel */
+/* Floating Selection Action Panel */
 .selection-panel {
   position: fixed;
   bottom: -60px;
@@ -377,27 +378,4 @@
 .selection-actions {
   display: flex;
   gap: 10px;
-}
-.verified-badge,
-.plagiarist-badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.8rem;
-  width: 100%;
-  padding: 2px 15px;
-  font-weight: bold;
-}
-.verified-badge {
-  /* border-top: 2px solid #2ecc71; */
-  border-bottom: 2px solid #2ecc71;
-}
-.plagiarist-badge {
-  /* border-top: 2px solid #e74c3c; */
-  border-bottom: 2px solid #e74c3c;
-}
-/* Style for pattern badges */
-.pattern-name .verified-badge,
-.pattern-name .plagiarist-badge {
-  font-size: 1rem;
-  vertical-align: middle;
 }

@@ -1,9 +1,12 @@
+/* Duplicates Tab Base Layout */
 .duplicate-sets-container {
   margin-top: 20px;
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
 }
+
+/* Duplicate Patterns Card Base */
 .duplicate-set {
   background: white;
   border-radius: 8px;
@@ -11,6 +14,8 @@
   margin-bottom: 20px;
   overflow: hidden;
 }
+
+/* Duplicate Patterns Header */
 .duplicate-set-header {
   padding: 15px;
   background: var(--secondary-color);
@@ -31,9 +36,11 @@
 .similarity-badge.high {
   background-color: var(--success-color);
 }
+
+/* Duplicate Pattern Sub-Cards */
 .duplicate-patterns {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 15px;
   padding: 15px;
 }
@@ -52,6 +59,8 @@
   height: auto;
   display: block;
 }
+
+/* Sub-Card Details */
 .pattern-details {
   padding: 10px;
 }
@@ -71,6 +80,8 @@
   flex-direction: column;
   gap: 2px;
 }
+
+/* Duplicate Patterns Card Actions */
 .duplicate-actions {
   padding: 15px;
   border-top: 1px solid var(--border-color);
