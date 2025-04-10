@@ -269,7 +269,7 @@ CURRENT BUG LIST (address later)
       <div class="modal">
         <button class="modal-close">&times;</button>
         <h2 class="modal-title">Import Patterns</h2>
-        <div class="form-group">
+        <div class="form-group full-width">
           <label for="pattern-folder">Select Pattern Folder</label>
           <input
             type="file"
@@ -279,7 +279,7 @@ CURRENT BUG LIST (address later)
             multiple
           />
         </div>
-        <div id="import-status"></div>
+        <div id="import-status full-width"></div>
         <button class="btn" id="start-import-btn">Import Patterns</button>
       </div>
     </div>
@@ -4891,19 +4891,19 @@ CURRENT BUG LIST (address later)
       
       <div class="settings-section">
         <h3>Thumbnail Storage</h3>
-        <div class="form-group">
-          <label>
+        <div class="form-group full-width" style="display: flex;">
+          
             <input type="radio" name="thumbnail-storage" id="store-base64" ${
               appSettings.storeThumbnailsAsBase64 ? "checked" : ""
-            }>
+            } style="width: unset; margin-right: 5px;">
+          <label>
             Store thumbnails as base64 (works offline, uses more storage)
           </label>
-        </div>
-        <div class="form-group">
-          <label>
+          
             <input type="radio" name="thumbnail-storage" id="store-paths" ${
               !appSettings.storeThumbnailsAsBase64 ? "checked" : ""
-            }>
+            } style="width: unset; margin-right: 5px;">
+            <label>
             Load thumbnails dynamically from files (saves storage, requires file access)
           </label>
         </div>
@@ -4915,7 +4915,7 @@ CURRENT BUG LIST (address later)
       <div class="settings-section">
         <h3>Data Management</h3>
         <p class="help-text">Import or export pattern metadata including tags, sets, and creator information.</p>
-        <div class="form-group" style="display: flex; gap: 10px;">
+        <div class="form-group full-width" style="display: flex; gap: 10px; margin-top: 15px;">
           <button id="import-metadata-btn-settings" class="btn btn-secondary">Import Metadata</button>
           <button id="export-metadata-btn-settings" class="btn btn-secondary">Export Metadata</button>
         </div>
