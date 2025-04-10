@@ -85,6 +85,13 @@ CURRENT BUG LIST (address later)
               >
                 <span class="sort-icon">↓</span> Alphabetical
               </div>
+              <div
+                class="sort-option"
+                data-sort="set-size"
+                data-direction="asc"
+              >
+                <span class="sort-icon">↓</span> Set Size
+              </div>
               <div class="sort-option" data-sort="tag" data-direction="asc">
                 <span class="sort-icon">↓</span> Group by 🏷️
               </div>
@@ -1100,6 +1107,90 @@ CURRENT BUG LIST (address later)
 
             tagSection.appendChild(patternsGrid);
             gallery.appendChild(tagSection);
+          });
+        } else if (sort.type === "set-size") {
+          // Create a unified array of both sets and patterns
+          const allItems = [];
+
+          // Add sets as items
+          visibleSets.forEach((set) => {
+            allItems.push({
+              isSet: true,
+              set: set,
+              name: set.name,
+              // Add size information for sorting
+              gridSize: set.gridSize || "no-grid",
+            });
+
+            // Track patterns in sets
+            set.patterns.forEach((patternId) => {
+              patternsInRenderedSets.add(patternId);
+            });
+          });
+
+          // Add individual patterns not in sets
+          filteredPatterns.forEach((pattern) => {
+            if (!patternsInRenderedSets.has(pattern.id)) {
+              allItems.push({
+                isSet: false,
+                pattern: pattern,
+                name: pattern.patternName,
+                gridSize: "not-in-set", // For individual patterns
+              });
+            }
+          });
+
+          // Define the order of the size groups for sorting
+          const sizeOrder = [
+            "not-in-set", // Individual patterns not in sets
+            "no-grid", // Collection sets without grid
+            "1x2",
+            "2x1", // 2-pattern grids
+            "2x2", // 4-pattern square grid
+            "1x3",
+            "3x1", // 3-pattern grids
+            "1x4",
+            "4x1", // 4-pattern line grids
+            "3x3", // 9-pattern square grid
+            "4x4", // 16-pattern square grid
+          ];
+
+          // Sort all items by size and then by name
+          const sortedItems = allItems.sort((a, b) => {
+            const indexA = sizeOrder.indexOf(a.gridSize);
+            const indexB = sizeOrder.indexOf(b.gridSize);
+
+            // First sort by grid size
+            if (indexA !== indexB) {
+              // Handle cases where one or both sizes aren't in our predefined order
+              if (indexA === -1 && indexB === -1) {
+                // Both are custom sizes not in our list, compare them directly
+                return sort.direction === "asc"
+                  ? a.gridSize.localeCompare(b.gridSize)
+                  : b.gridSize.localeCompare(a.gridSize);
+              }
+              if (indexA === -1) return sort.direction === "asc" ? 1 : -1;
+              if (indexB === -1) return sort.direction === "asc" ? -1 : 1;
+
+              // Both are in our list, use the predefined order
+              return sort.direction === "asc"
+                ? indexA - indexB
+                : indexB - indexA;
+            }
+
+            // If same size, sort alphabetically by name
+            return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+          });
+
+          // Render each item based on its type
+          sortedItems.forEach((item) => {
+            if (item.isSet) {
+              const setCard = createSetCard(item.set);
+              if (setCard) gallery.appendChild(setCard);
+            } else {
+              const patternCard = createPatternCard(item.pattern);
+              gallery.appendChild(patternCard);
+            }
           });
         }
       }
