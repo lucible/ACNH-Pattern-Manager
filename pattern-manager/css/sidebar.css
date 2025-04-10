@@ -36,7 +36,6 @@
   color: var(--primary-color);
 }
 .sidebar-section .sidebar-list {
-  max-height: 400px;
   overflow-y: auto;
   transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.2s ease;
   margin-left: 10px;
