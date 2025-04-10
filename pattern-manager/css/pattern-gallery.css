@@ -135,6 +135,18 @@
   width: 33%;
   grid-template-rows: repeat(3, 1fr);
 }
+/* Specific styles for 4x1 grids (vertical) */
+.set-grid-preview.vertical-grid[style*="--cols: 4"] {
+  width: 25%;
+  grid-template-columns: repeat(1, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+}
+/* Specific styles for 1x4 grids (horizontal) */
+.set-grid-preview.horizontal-grid[style*="--cols: 4"] {
+  height: 25%;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(1, 1fr);
+}
 /* Set Grid Preview Images */
 .set-grid-item {
   width: 100%;
@@ -208,10 +220,12 @@
 /* Pattern Details Modal */
 .pattern-detail {
   display: flex;
+  flex-direction: column;
   gap: 20px;
+  width: 100%;
 }
 .pattern-image {
-  flex: 0 0 250px;
+  width: 25%;
 }
 .pattern-image img {
   width: 100%;
@@ -220,7 +234,10 @@
   border-radius: 4px;
 }
 .pattern-details {
-  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2%;
 }
 
 /* Set Detail Modal */
