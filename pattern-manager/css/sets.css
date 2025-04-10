@@ -91,6 +91,16 @@
   font-size: 16px;
   line-height: 1;
 }
+.set-pattern-item.dragging {
+  opacity: 0.6;
+  transform: scale(0.95);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+}
+.drop-indicator {
+  transition: all 0.1s ease;
+  pointer-events: none;
+  box-shadow: 0 0 5px var(--primary-color);
+}
 
 /* Add Pattern Modal */
 .creator-filter-info {
