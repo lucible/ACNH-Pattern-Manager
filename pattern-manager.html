@@ -309,7 +309,7 @@ CURRENT BUG LIST (address later)
 
       // Global settings object
       const appSettings = {
-        storeThumbnailsAsBase64: true,
+        storeThumbnailsAsBase64: false,
         lastImportDirectory: "",
       };
 
@@ -5731,7 +5731,8 @@ CURRENT BUG LIST (address later)
             const pattern = {
               id: patternId,
               fileName: nhdFile.name,
-              filePath: null,
+              // Store the full path to the NHD file
+              filePath: nhdFile.webkitRelativePath || nhdFile.path || null,
               encodedThumbnail: null,
               thumbnailPath: null,
 
@@ -5759,13 +5760,14 @@ CURRENT BUG LIST (address later)
             };
 
             console.log(`Pattern created with fileHash: ${pattern.fileHash}`);
+            console.log(`Pattern file path: ${pattern.filePath}`);
 
             // Handle thumbnail based on storage preference
             if (pngFile) {
               // Store the original file path for reference
               // When using relative URLs, this becomes the primary thumbnail source
               pattern.thumbnailPath =
-                pngFile.webkitRelativePath || pngFile.name;
+                pngFile.webkitRelativePath || pngFile.path || pngFile.name;
 
               // If storing as base64, create resized thumbnail
               if (appSettings.storeThumbnailsAsBase64) {
@@ -5806,6 +5808,7 @@ CURRENT BUG LIST (address later)
               name: pattern.patternName,
               creator: pattern.creatorName,
               town: pattern.townName,
+              filePath: pattern.filePath,
               hash: pattern.thumbnailHash
                 ? pattern.thumbnailHash.substring(0, 20) + "..."
                 : "None",
