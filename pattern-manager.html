@@ -14,6 +14,7 @@ CURRENT BUG LIST (address later)
       creator (lets you add patterns of two creators to one set when creating for 1st time)
 [ ] Clicking outside a modal should close it
 [ ] Clicking on a set in select mode should open the edit set modal
+[ ] pattern set selection action thingy shouldn't appear on other tabs at all
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -1456,7 +1457,6 @@ CURRENT BUG LIST (address later)
           <div class="selection-count">0 patterns selected</div>
           <div class="selection-actions">
             <button id="add-tags-btn" class="btn btn-small">Add Tags</button>
-            <button id="add-to-set-btn" class="btn btn-small">Add to Set</button>
             <button id="create-set-btn" class="btn btn-small">Create Set</button>
           </div>
           <button id="clear-selection-btn" class="btn btn-small btn-secondary">Clear</button>
@@ -1469,9 +1469,6 @@ CURRENT BUG LIST (address later)
         document
           .getElementById("add-tags-btn")
           .addEventListener("click", () => batchAddTags());
-        document
-          .getElementById("add-to-set-btn")
-          .addEventListener("click", () => batchAddToSet());
         document
           .getElementById("selection-panel")
           .querySelector("#create-set-btn")
@@ -1820,125 +1817,6 @@ CURRENT BUG LIST (address later)
           });
 
         tagInput.insertBefore(tagElement, tagInput.querySelector("input"));
-      }
-
-      // Add selected patterns to an existing set
-      function batchAddToSet() {
-        if (appData.selectedPatterns.size === 0) return;
-
-        // Create modal for set selection
-        const modal = document.createElement("div");
-        modal.className = "modal-backdrop";
-        modal.style.display = "flex";
-
-        // Get available sets
-        const sets = Object.values(appData.sets);
-
-        modal.innerHTML = `
-    <div class="modal">
-      <button class="modal-close">&times;</button>
-      <h2 class="modal-title">Add ${
-        appData.selectedPatterns.size
-      } Patterns to Set</h2>
-      
-      <div class="form-group">
-        <label for="batch-set-select">Select Set</label>
-        <select id="batch-set-select">
-          <option value="">-- Select a Set --</option>
-          ${sets
-            .map((set) => `<option value="${set.id}">${set.name}</option>`)
-            .join("")}
-        </select>
-      </div>
-      
-      ${
-        sets.length === 0 ? "<p>No sets available. Create a set first.</p>" : ""
-      }
-      
-      <button class="btn" id="apply-batch-set-btn" ${
-        sets.length === 0 ? "disabled" : ""
-      }>Add to Set</button>
-    </div>
-  `;
-
-        document.body.appendChild(modal);
-
-        // Close button
-        modal.querySelector(".modal-close").addEventListener("click", () => {
-          document.body.removeChild(modal);
-        });
-
-        // Apply button
-        const applyBtn = modal.querySelector("#apply-batch-set-btn");
-        if (applyBtn && !applyBtn.disabled) {
-          applyBtn.addEventListener("click", () => {
-            const setId = document.getElementById("batch-set-select").value;
-
-            if (!setId) {
-              showNotification("Please select a set", "error");
-              return;
-            }
-
-            const set = appData.sets[setId];
-            if (!set) {
-              showNotification("Selected set not found", "error");
-              return;
-            }
-
-            // Get current max order in set
-            let maxOrder = 0;
-            set.patterns.forEach((patternId) => {
-              if (
-                appData.patterns[patternId] &&
-                appData.patterns[patternId].setOrder > maxOrder
-              ) {
-                maxOrder = appData.patterns[patternId].setOrder;
-              }
-            });
-
-            // Add patterns to set
-            appData.selectedPatterns.forEach((patternId) => {
-              const pattern = appData.patterns[patternId];
-              if (!pattern) return;
-
-              // Skip if already in this set
-              if (pattern.setId === setId) return;
-
-              // Remove from previous set if any
-              if (pattern.setId && appData.sets[pattern.setId]) {
-                appData.sets[pattern.setId].patterns = appData.sets[
-                  pattern.setId
-                ].patterns.filter((id) => id !== patternId);
-              }
-
-              // Add to new set
-              if (!set.patterns.includes(patternId)) {
-                set.patterns.push(patternId);
-
-                // Update pattern
-                pattern.setId = setId;
-                pattern.setName = set.name;
-                pattern.setOrder = ++maxOrder;
-                pattern.lastModified = new Date().toISOString().split("T")[0];
-              }
-            });
-
-            // Save changes
-            saveDataToLocalStorage();
-
-            // Close modal
-            document.body.removeChild(modal);
-
-            // Clear selection
-            clearSelection();
-
-            // Refresh UI
-            renderPatternGallery();
-            renderSidebarFilters();
-
-            showNotification(`Patterns added to set "${set.name}"`);
-          });
-        }
       }
 
       // Create a new set with selected patterns
