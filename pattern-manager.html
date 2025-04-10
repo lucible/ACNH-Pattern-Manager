@@ -5770,7 +5770,9 @@ CURRENT BUG LIST (address later)
               // If storing as base64, create resized thumbnail
               if (appSettings.storeThumbnailsAsBase64) {
                 try {
-                  pattern.encodedThumbnail = await createResizedThumbnail(pngFile);
+                  pattern.encodedThumbnail = await createResizedThumbnail(
+                    pngFile
+                  );
                 } catch (error) {
                   console.error("Error creating thumbnail:", error);
                   pattern.encodedThumbnail = null;
@@ -6023,43 +6025,18 @@ CURRENT BUG LIST (address later)
             }
 
             // Process patterns to handle different thumbnail storage formats
-            // Handle both new format (with thumbnailPathBase64 and thumbnailPathFile)
-            // and old format (with just thumbnailPath)
             for (const id in importData.patterns) {
               const pattern = importData.patterns[id];
 
-              // If the exported data used the new format with separate base64 and file paths
-              // TODO: pretty sure this is wildly out of date
-              // if (pattern.encodedThumbnailBase64 || pattern.encodedThumbnailFile) {
-              //   if (
-              //     appSettings.storeThumbnailsAsBase64 &&
-              //     pattern.encodedThumbnailBase64
-              //   ) {
-              //     pattern.encodedThumbnail = pattern.encodedThumbnailBase64;
-              //   } else {
-              //     pattern.encodedThumbnail = null;
-              //   }
-
-              //   if (pattern.encodedThumbnailFile) {
-              //     pattern.thumbnailPath = pattern.encodedThumbnailFile;
-              //   }
-
-              //   // Clean up temporary properties
-              //   delete pattern.encodedThumbnailBase64;
-              //   delete pattern.encodedThumbnailFile;
-              // }
-              // If using old format, make sure it's compatible with current settings
               if (pattern.encodedThumbnail) {
                 // If path is base64 but we're not storing base64, clear it and keep thumbnailPath
                 if (
                   pattern.encodedThumbnail.startsWith("data:") &&
                   !appSettings.storeThumbnailsAsBase64
                 ) {
-                  pattern.thumbnailPath =
-                    pattern.thumbnailPath || pattern.encodedThumbnail;
+                  pattern.thumbnailPath = pattern.thumbnailPath;
                   pattern.encodedThumbnail = null;
                 }
-                // If path is not base64 and we are storing base64, it will be loaded later on demand
               }
             }
 
@@ -6157,10 +6134,7 @@ CURRENT BUG LIST (address later)
             }
             // If not updateExisting, keep the existing pattern unchanged
           } else {
-            // New pattern, just add it (note that thumbnailPath will be a URL that won't be valid)
-            // TODO: pretty sure the below is bad (clears out existing data)
-            // pattern.encodedThumbnail = null; // Clear invalid thumbnail path
-            // pattern.thumbnailHash = null; // Clear hash since thumbnail is not available
+            // New pattern
             appData.patterns[id] = pattern;
           }
         }
@@ -6294,21 +6268,8 @@ CURRENT BUG LIST (address later)
           appSettings: appSettings,
         };
 
-        // Export patterns with both base64 and file paths for maximum compatibility
         for (const id in appData.patterns) {
           exportData.patterns[id] = { ...appData.patterns[id] };
-
-          // If we have base64 data and original file path, include both
-          // [ ] TODO: is this relevant at all?
-          // if (
-          //   appData.patterns[id].encodedThumbnail &&
-          //   appData.patterns[id].thumbnailPath
-          // ) {
-          //   exportData.patterns[id].thumbnailPathBase64 =
-          //     appData.patterns[id].thumbnailPath;
-          //   exportData.patterns[id].thumbnailPathFile =
-          //     appData.patterns[id].originalFilePath;
-          // }
         }
 
         // Create download link
