@@ -81,7 +81,7 @@ body {
 }
 .form-group {
   margin-bottom: 15px;
-  width: 100%;
+  width: 49%;
 }
 .form-group label {
   display: block;
@@ -159,6 +159,9 @@ hr {
   overflow-y: auto;
   padding: 20px;
   position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2%;
 }
 .modal-close {
   position: absolute;
@@ -174,6 +177,7 @@ hr {
   margin-bottom: 15px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-color);
+  width: 100%;
 }
 
 /* Image Rendering Style */
@@ -325,6 +329,9 @@ hr {
   font-size: 0.8rem;
   color: #666;
   margin-top: 5px;
+}
+.full-width {
+  width: 100%;
 }
 
 /* Animations */

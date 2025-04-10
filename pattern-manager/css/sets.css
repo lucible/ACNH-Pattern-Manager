@@ -4,6 +4,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
+  justify-content: flex-start;
 }
 
 /* Set Card Base */
@@ -12,8 +13,9 @@
   padding: 15px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  /* width: fit-content; */
-  width: 290px;
+  width: 15%;
+  transition: width 0.3s ease;
+  height: fit-content;
 }
 
 /* Pattern Display Within Card */
@@ -104,7 +106,7 @@
 .set-pattern.dragging {
   opacity: 0.6;
   transform: scale(0.95);
-  box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
   z-index: 1000;
 }
 
@@ -180,4 +182,104 @@
   padding: 2px 4px;
   font-size: 0.6rem;
   border-bottom-left-radius: 4px;
+}
+
+/* Pattern grid display within set card */
+.set-grid-display {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+  overflow: hidden;
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  aspect-ratio: 1;
+}
+/* Vertical grid (like 2x1, 3x1) */
+.set-grid-display.vertical-grid {
+  width: 80%; /* Narrower width for vertical grids */
+  margin-left: auto;
+  margin-right: auto;
+  aspect-ratio: 0.5; /* Taller than wide */
+}
+/* Horizontal grid (like 1x2, 1x3) */
+.set-grid-display.horizontal-grid {
+  width: 100%;
+  aspect-ratio: 2; /* Wider than tall */
+}
+/* Collection display (non-grid) - defaults to 2x2 or 3x3 */
+.set-collection-display {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 2px;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 1;
+}
+/* 3x3 collection for larger sets */
+.set-collection-display.large {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+}
+
+/* Pattern items within grids */
+.set-grid-item {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+}
+.set-grid-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.set-grid-item.empty {
+  background-color: var(--secondary-color);
+}
+
+/* Set header styling */
+.set-header {
+  margin-bottom: 10px;
+}
+.set-header h3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+.set-counter {
+  font-size: 0.8rem;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-weight: normal;
+}
+.set-grid-badge {
+  display: inline-block;
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 5px;
+  vertical-align: middle;
+  font-weight: normal;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+  .set-item {
+    width: 23%;
+  }
 }

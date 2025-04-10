@@ -5,16 +5,13 @@ CURRENT BUG LIST (address later)
 [ ] The 'create set' button should be disabled when selected patterns are from multiple creators.
 [ ] The vertical/horizontal grids are flipped IMO. 3x1 should mean 3 columns, 1 row and right now
       it means the opposite!
-[ ] Fix selected "Select" button CSS
-[ ] Hover transitions on selected pattern cards vs unselected:
-      selected cards clonk down while unselected cards ease down. how do that on selected cards?!
 [ ] Creators alphabetical and pattern # are opposite so the arrows don't really work for both...
 [ ] Should probably integrate the TownID and the PlayerID from the NHD file into the program's
       creator ID to ensure that creators with the same name & town name (but presumably
       different IDs) don't get merged
 [ ] The duplicate detection UI is currently bugged after handling an unclear number of items
 [ ] Add Patterns modal doesn't properly enforce that sets must only have patterns from the same
-      creator (lets you add patterns of two creators to one set)
+      creator (lets you add patterns of two creators to one set when creating for 1st time)
 [ ] Clicking outside a modal should close it
 -->
 <!DOCTYPE html>
@@ -257,7 +254,7 @@ CURRENT BUG LIST (address later)
             or leave as "No Grid" if it's just a collection.
           </p>
         </div>
-        <div class="form-group">
+        <div class="form-group full-width">
           <label for="set-notes">Notes</label>
           <textarea id="set-notes" rows="3"></textarea>
         </div>
@@ -1898,7 +1895,7 @@ CURRENT BUG LIST (address later)
               <p class="help-text">Select a grid size if this set forms a larger image when combined.</p>
             </div>
             
-            <div class="form-group">
+            <div class="form-group full-width">
               <label for="new-set-notes">Notes (Optional)</label>
               <textarea id="new-set-notes" rows="3" placeholder="Enter notes about this set"></textarea>
             </div>
@@ -2832,7 +2829,8 @@ CURRENT BUG LIST (address later)
         showNotification("Set created successfully");
       }
 
-      // Render sets view
+      // Render sets view with grid-based layout (preserving drag and drop)
+      // Render sets view with grid-based layout
       function renderSets() {
         const setManager = elements.setManager;
         setManager.innerHTML = "";
@@ -2854,49 +2852,156 @@ CURRENT BUG LIST (address later)
         }
 
         sets.forEach((set) => {
-          const setItem = document.createElement("div");
-          setItem.className = "set-item";
-
           // Get patterns in this set
           const setPatterns = set.patterns
             .map((id) => appData.patterns[id])
             .filter((pattern) => pattern) // Filter out any null/undefined patterns
             .sort((a, b) => (a.setOrder || 0) - (b.setOrder || 0));
 
-          const html = `
-                    <div class="set-header">
-                        <h3>${set.name}</h3>
-                        <p>${set.notes || ""}</p>
-                    </div>
-                    <div class="set-patterns">
-                        ${setPatterns
-                          .map(
-                            (pattern, index) => `
-                            <img class="set-pattern" src="${getPatternThumbnailSrc(
-                              pattern
-                            )}" 
-                                alt="${pattern.patternName}" 
-                                title="${pattern.patternName}" 
-                                data-id="${pattern.id}" 
-                                data-order="${index + 1}">
-                        `
-                          )
-                          .join("")}
-                    </div>
-                    <div class="set-actions">
-                        <button class="btn btn-secondary" data-action="edit" data-id="${
-                          set.id
-                        }">Edit</button>
-                        <button class="btn btn-secondary" data-action="delete" data-id="${
-                          set.id
-                        }">Delete</button>
-                    </div>
-                `;
+          if (setPatterns.length === 0) return; // Skip empty sets
 
-          setItem.innerHTML = html;
+          // Determine grid type and class
+          let gridClass = "";
+          let gridHTML = "";
 
-          // Add drag and drop for ordering
-          setupDragAndDrop(setItem.querySelector(".set-patterns"));
+          if (set.gridSize) {
+            const [rows, cols] = set.gridSize
+              .split("x")
+              .map((num) => parseInt(num, 10));
+
+            // Set appropriate grid class
+            if (cols > rows) {
+              gridClass = "horizontal-grid";
+            } else if (rows > cols) {
+              gridClass = "vertical-grid";
+            } else {
+              gridClass = "square-grid";
+            }
+
+            // Create grid display with appropriate styling
+            gridHTML = `
+        <div class="set-grid-display ${gridClass}" style="
+          grid-template-rows: repeat(${rows}, 1fr);
+          grid-template-columns: repeat(${cols}, 1fr);">
+      `;
+
+            // Add patterns in order
+            for (
+              let i = 0;
+              i < Math.min(rows * cols, setPatterns.length);
+              i++
+            ) {
+              const pattern = setPatterns[i];
+              gridHTML += `
+          <div class="set-grid-item" data-id="${pattern.id}" data-order="${
+                i + 1
+              }">
+            <img src="${getPatternThumbnailSrc(pattern)}" 
+                alt="${pattern.patternName}"
+                title="${pattern.patternName}" 
+                class="pixel-art-image">
+          </div>
+        `;
+            }
+
+            // Fill in empty spaces if the grid isn't complete
+            for (let i = setPatterns.length; i < rows * cols; i++) {
+              gridHTML += `
+          <div class="set-grid-item empty">
+            <div class="empty-grid-item"></div>
+          </div>
+        `;
+            }
+
+            gridHTML += "</div>";
+          } else {
+            // For non-grid sets, create a collection display (2x2 or 3x3)
+            const collectionClass = setPatterns.length > 4 ? "large" : "";
+            const columns = setPatterns.length > 4 ? 3 : 2;
+
+            gridHTML = `<div class="set-collection-display ${collectionClass}">`;
+
+            // Add up to 9 patterns (3x3) or 4 patterns (2x2)
+            const maxPatterns = columns === 3 ? 9 : 4;
+
+            for (
+              let i = 0;
+              i < Math.min(maxPatterns, setPatterns.length);
+              i++
+            ) {
+              const pattern = setPatterns[i];
+              gridHTML += `
+          <div class="set-grid-item" data-id="${pattern.id}" data-order="${
+                i + 1
+              }">
+            <img src="${getPatternThumbnailSrc(pattern)}" 
+                alt="${pattern.patternName}"
+                title="${pattern.patternName}" 
+                class="pixel-art-image">
+          </div>
+        `;
+            }
+
+            // If there are more patterns than we can show, add a counter for the rest
+            if (setPatterns.length > maxPatterns) {
+              const remainingCount = setPatterns.length - maxPatterns;
+              gridHTML += `
+          <div class="set-grid-item more">
+            <div class="more-patterns">+${remainingCount} more</div>
+          </div>
+        `;
+            }
+
+            gridHTML += "</div>";
+          }
+
+          // Create set item element
+          const setItem = document.createElement("div");
+          setItem.className = `set-item ${gridClass}`;
+          setItem.setAttribute("data-id", set.id);
+
+          // Calculate creator information
+          const creatorInfo = getSetCreatorInfo(set.patterns);
+
+          // Create set HTML
+          setItem.innerHTML = `
+      <div class="set-header">
+        <h3>
+          ${set.name}
+          <span class="set-counter">${setPatterns.length}</span>
+        </h3>
+        <div class="set-creator">by ${creatorInfo.name} of ${
+            creatorInfo.town
+          }</div>
+        ${
+          set.gridSize
+            ? `<div class="set-grid-info">${set.gridSize} grid</div>`
+            : ""
+        }
+        ${set.notes ? `<p>${set.notes}</p>` : ""}
+      </div>
+      
+      ${gridHTML}
+      
+      <div class="set-actions">
+        <button class="btn btn-secondary" data-action="edit" data-id="${
+          set.id
+        }">Edit</button>
+        <button class="btn btn-secondary" data-action="delete" data-id="${
+          set.id
+        }">Delete</button>
+      </div>
+    `;
+
+          // Add click event for grid items to show pattern details
+          setItem
+            .querySelectorAll(".set-grid-item[data-id]")
+            .forEach((gridItem) => {
+              gridItem.addEventListener("click", () => {
+                const patternId = gridItem.getAttribute("data-id");
+                openPatternDetail(patternId);
+              });
+            });
 
           // Add event listeners for buttons
           setItem
@@ -2915,7 +3020,6 @@ CURRENT BUG LIST (address later)
         });
       }
 
-      // Setup drag and drop for pattern ordering
       // Setup drag and drop for pattern ordering in the Sets view
       function setupDragAndDrop(container) {
         if (!container) return;
@@ -3260,7 +3364,7 @@ CURRENT BUG LIST (address later)
 
         // Add pattern management section
         const formGroup = document.createElement("div");
-        formGroup.className = "form-group";
+        formGroup.className = "form-group full-width";
         formGroup.innerHTML = `
           <label>Patterns</label>
           <div class="set-patterns-container">
@@ -3403,9 +3507,6 @@ CURRENT BUG LIST (address later)
       }
 
       // Setup drag and drop for set editing
-      // Improved setup for drag and drop in set editing
-      // Improved setup for drag and drop in set editing
-      // Improved setup for drag and drop in set editing
       function setupSetDragAndDrop(container) {
         if (!container) return;
 
