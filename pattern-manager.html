@@ -2485,7 +2485,14 @@ CURRENT BUG LIST (address later)
         let tagFiltersHTML = untaggedFilterHTML;
 
         Object.keys(tagHierarchy)
-          .sort()
+          .sort((a, b) => {
+            // Special case: "untagged" always at the top
+            if (a === "untagged") return -1;
+            if (b === "untagged") return 1;
+
+            // Otherwise sort by count (highest first)
+            return tagHierarchy[b].count - tagHierarchy[a].count;
+          })
           .forEach((tag) => {
             const isActive = appData.activeFilters.tags.has(tag);
             const hasChildren =
