@@ -83,3 +83,10 @@
 #creator-filters {
   text-transform: capitalize;
 }
+.tag-children {
+  display: none;
+  margin-left: 1.5rem;
+}
+.tag-children.visible {
+  display: block;
+}
