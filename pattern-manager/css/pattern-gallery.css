@@ -1,0 +1,403 @@
+.pattern-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.pattern-card {
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  border-bottom: 2px solid var(--primary-color);
+  transition: transform 0.2s, box-shadow 0.2s;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pattern-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.pattern-card.selected:hover {
+  transform: translateY(-5px);
+}
+
+.pattern-thumbnail {
+  width: 100%;
+  height: 200px;
+  object-fit: contain;
+  background-color: #f8f8f8;
+  border-bottom: 1px solid var(--border-color);
+  image-rendering: pixelated; /* Modern browsers */
+  image-rendering: -moz-crisp-edges; /* Firefox */
+  image-rendering: crisp-edges; /* Safari */
+  -ms-interpolation-mode: nearest-neighbor; /* IE (deprecated) */
+}
+
+.pattern-info {
+  padding: 12px;
+}
+
+.pattern-name {
+  font-weight: bold;
+  margin-bottom: 5px;
+  font-size: 1.1rem;
+}
+
+.pattern-creator {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.tag {
+  background-color: var(--secondary-color);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+/* Pattern Details Modal */
+.pattern-detail {
+  display: flex;
+  gap: 20px;
+}
+
+.pattern-image {
+  flex: 0 0 250px;
+}
+
+.pattern-image img {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.pattern-details {
+  flex: 1;
+}
+
+/* Set Cards */
+.set-card {
+  position: relative;
+}
+.set-thumbnail {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  background-color: #f8f8f8;
+  border-bottom: 1px solid var(--border-color);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.set-grid-preview {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  gap: 2px;
+}
+/* Base styles for horizontal grids */
+.set-grid-preview.horizontal-grid {
+  align-self: center;
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: 1fr;
+}
+/* Specific styles for 2x1 grids */
+.set-grid-preview.horizontal-grid[style*="--cols: 2"] {
+  height: 50%; /* Taller height for 2x1 grids */
+  grid-template-columns: repeat(2, 1fr);
+}
+/* Specific styles for 3x1 grids */
+.set-grid-preview.horizontal-grid[style*="--cols: 3"] {
+  height: 33%; /* Original height for 3x1 grids */
+  grid-template-columns: repeat(3, 1fr);
+}
+/* Base styles for vertical grids */
+.set-grid-preview.vertical-grid {
+  align-self: center;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+/* Specific styles for 1x2 grids */
+.set-grid-preview.vertical-grid[style*="--rows: 2"] {
+  width: 50%; /* Wider width for 1x2 grids */
+  grid-template-rows: repeat(2, 1fr);
+}
+/* Specific styles for 1x3 grids */
+.set-grid-preview.vertical-grid[style*="--rows: 3"] {
+  width: 33%; /* Original width for 1x3 grids */
+  grid-template-rows: repeat(3, 1fr);
+}
+/* Square grids (e.g., 2x2, 3x3) */
+.set-grid-preview.square-grid {
+  width: 100%;
+  height: 100%;
+}
+.set-grid-item {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1/1;
+}
+.set-grid-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.set-grid-item.empty {
+  background-color: var(--secondary-color);
+}
+.set-collection-preview {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+}
+.set-collection-item {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.set-collection-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.set-collection-item.more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--secondary-color);
+}
+.more-patterns {
+  font-weight: bold;
+  color: var(--primary-color);
+}
+.set-badge {
+  display: inline-block;
+  background-color: var(--primary-color);
+  color: white;
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-left: 5px;
+  vertical-align: middle;
+  font-weight: normal;
+}
+.set-count {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 5px;
+}
+.set-grid-size {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* Grouped Results */
+.pattern-group-section {
+  margin-bottom: 20px;
+  width: 100%;
+}
+/* Group headers styling */
+.group-header {
+  background-color: var(--secondary-color);
+  padding: 10px 15px;
+  margin: 15px 0 20px 0;
+  border-radius: 4px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--primary-color);
+  font-size: 1.5rem;
+}
+/* First group header should have smaller top margin */
+.group-header:first-of-type {
+  margin-top: 0;
+}
+
+.group-header .group-count {
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 50%;
+  padding: 2px 8px;
+  font-size: 0.9rem;
+  min-width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Set Detail Modal */
+.set-detail-info {
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+.set-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+.set-notes {
+  flex-basis: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  background-color: var(--secondary-color);
+  border-radius: 4px;
+  white-space: pre-line;
+}
+.set-patterns-container {
+  margin-bottom: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.set-grid-layout {
+  display: grid;
+  gap: 10px;
+  justify-content: center;
+}
+.set-collection-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+}
+.set-detail-pattern {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: white;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.set-detail-pattern:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+.set-detail-pattern img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  display: block;
+}
+.set-detail-pattern .pattern-name {
+  padding: 5px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Pattern card selection styles */
+.pattern-select {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 4px;
+  border-radius: 2px;
+  display: flex;
+  justify-content: center;
+}
+/* Selection mode button */
+#selection-mode-btn.active {
+  background-color: var(--primary-color);
+  color: white;
+}
+.selection-icon {
+  margin-right: 5px;
+}
+.pattern-card {
+  position: relative;
+}
+.pattern-card.selected {
+  box-shadow: 0 0 0 3px var(--primary-color);
+  border: none;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+.pattern-select {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+}
+.pattern-select input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+/* Selection panel */
+.selection-panel {
+  position: fixed;
+  bottom: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: white;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+  padding: 15px 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: bottom 0.3s ease;
+  z-index: 100;
+}
+.selection-panel.active {
+  bottom: 0;
+}
+.selection-count {
+  font-weight: bold;
+  margin-right: 10px;
+}
+.selection-actions {
+  display: flex;
+  gap: 10px;
+}
+.verified-badge,
+.plagiarist-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  width: 100%;
+  padding: 2px 15px;
+  font-weight: bold;
+}
+.verified-badge {
+  /* border-top: 2px solid #2ecc71; */
+  border-bottom: 2px solid #2ecc71;
+}
+.plagiarist-badge {
+  /* border-top: 2px solid #e74c3c; */
+  border-bottom: 2px solid #e74c3c;
+}
+/* Style for pattern badges */
+.pattern-name .verified-badge,
+.pattern-name .plagiarist-badge {
+  font-size: 1rem;
+  vertical-align: middle;
+}

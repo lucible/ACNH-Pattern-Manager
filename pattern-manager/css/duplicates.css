@@ -1,0 +1,79 @@
+.duplicate-sets-container {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+.duplicate-set {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.duplicate-set-header {
+  padding: 15px;
+  background: var(--secondary-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.duplicate-set-header h3 {
+  margin: 0;
+}
+.similarity-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  color: white;
+}
+.similarity-badge.high {
+  background-color: var(--success-color);
+}
+.duplicate-patterns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding: 15px;
+}
+.duplicate-pattern {
+  flex: 1;
+  width: 200px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.pattern-preview {
+  position: relative;
+}
+.pattern-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.pattern-details {
+  padding: 10px;
+}
+.pattern-name {
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+.pattern-creator {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+.pattern-metadata {
+  font-size: 0.8rem;
+  color: #666;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.duplicate-actions {
+  padding: 15px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 10px;
+}

@@ -1,0 +1,214 @@
+.filter-wrapper {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#selection-mode-btn {
+  margin-left: auto;
+}
+
+.action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Center align all items */
+  margin: -20px;
+  margin-bottom: 20px;
+  padding: 10px 20px;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  gap: 10px;
+  background: white;
+  /* border-bottom: 2px solid var(--primary-color); */
+}
+/* .action-bar {
+    flex-direction: column;
+    align-items: stretch;
+  } */
+
+/* Properly align the control buttons group */
+.action-bar > div:last-child:not(.search-bar) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto; /* Don't grow or shrink */
+}
+
+.action-bar input,
+.action-bar button {
+  height: 34px; /* Consistent height for all elements */
+}
+
+.action-bar input {
+  padding: 8px 12px;
+}
+
+.search-bar {
+  display: flex;
+  gap: 10px;
+  flex: 0 1 500px; /* Flex basis instead of max-width, won't grow beyond 500px */
+  min-width: 250px; /* Ensure minimum width on small screens */
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.sort-dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+.sort-dropdown-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dropdown-arrow {
+  font-size: 0.7rem;
+  margin-left: 5px;
+}
+
+.sort-dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  min-width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  display: none;
+  font-family: "Rodin NTLG", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.sort-dropdown-menu.show {
+  display: block;
+}
+
+.sort-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.sort-option:hover {
+  background-color: var(--secondary-color);
+}
+
+.sort-option.active {
+  background-color: #e8f4e8;
+  font-weight: bold;
+}
+
+.sort-icon {
+  display: inline-block;
+  width: 16px;
+  margin-right: 8px;
+  text-align: center;
+}
+
+.sort-option-setting {
+  padding: 8px 12px;
+  font-size: 0.7rem;
+  color: #666;
+}
+.show-all-tags-label {
+  display: inline-flex;
+  gap: 1em;
+  align-items: center;
+}
+
+.active-filters-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  flex: 2; /* Take available space */
+  min-width: 200px; /* Ensure doesn't get too small */
+}
+
+.active-filters-title {
+  font-weight: bold;
+  margin: 0; /* Remove any margin */
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.active-filters-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+  align-items: center;
+}
+
+.active-filter {
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 15px;
+  padding: 4px 10px;
+  font-size: 0.9rem;
+  margin: 2px 0; /* Add minimal vertical margin */
+  height: 28px; /* Specific height for filter tags */
+  display: flex;
+  align-items: center;
+}
+
+.filter-remove {
+  margin-left: 5px;
+  color: #999;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.filter-remove:hover {
+  color: var(--error-color);
+}
+
+.tag-filter {
+  background-color: #e8f4e8;
+  border-color: var(--primary-color);
+}
+
+.creator-filter {
+  background-color: #e8eaf4;
+  border-color: #6495ed;
+  text-transform: capitalize;
+}
+
+.set-filter {
+  background-color: #f4eee8;
+  border-color: var(--accent-color);
+}
+
+.search-filter {
+  background-color: #f0f0f0;
+}
+
+.clear-all-filters {
+  padding: 4px 10px !important;
+  font-size: 0.9rem !important;
+}
+
+/* creators & duplicates tabs */
+.creator-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+#creators .sort-dropdown-container {
+  margin-left: auto;
+}
+#duplicates #scan-duplicates-btn {
+  margin-left: auto;
+}
