@@ -2916,24 +2916,40 @@ CURRENT BUG LIST (address later)
       }
 
       // Setup drag and drop for pattern ordering
+      // Setup drag and drop for pattern ordering in the Sets view
       function setupDragAndDrop(container) {
         if (!container) return;
 
         const patterns = container.querySelectorAll(".set-pattern");
+        let draggedItem = null;
+
+        // Create drop indicator
+        let dropIndicator = document.createElement("div");
+        dropIndicator.className = "drop-indicator";
+        document.body.appendChild(dropIndicator);
+
+        // Position container to allow absolute positioning within
+        if (window.getComputedStyle(container).position === "static") {
+          container.style.position = "relative";
+        }
+
+        // Initialize drag events
         patterns.forEach((pattern) => {
           pattern.setAttribute("draggable", "true");
 
           pattern.addEventListener("dragstart", (e) => {
+            draggedItem = pattern;
             e.dataTransfer.setData(
               "text/plain",
               pattern.getAttribute("data-id")
             );
-            e.dataTransfer.effectAllowed = "move";
-            pattern.classList.add("dragging");
+            setTimeout(() => pattern.classList.add("dragging"), 0);
           });
 
           pattern.addEventListener("dragend", () => {
             pattern.classList.remove("dragging");
+            dropIndicator.style.display = "none";
+            draggedItem = null;
           });
 
           pattern.addEventListener("click", () => {
@@ -2942,30 +2958,198 @@ CURRENT BUG LIST (address later)
           });
         });
 
+        // Track target for insertion
+        let targetItem = null;
+        let insertBefore = true;
+
         container.addEventListener("dragover", (e) => {
           e.preventDefault();
           e.dataTransfer.dropEffect = "move";
 
-          const dragging = container.querySelector(".dragging");
-          if (!dragging) return;
+          if (!draggedItem) return;
 
-          const afterElement = getDragAfterElement(container, e.clientX);
-          if (afterElement) {
-            container.insertBefore(dragging, afterElement);
+          // Get container position
+          const containerRect = container.getBoundingClientRect();
+
+          // Find possible drop positions
+          const items = [...container.querySelectorAll(".set-pattern")];
+
+          // If no items or only the dragged item, position at the start
+          if (items.length <= 1) {
+            positionIndicatorAtStart();
+            return;
+          }
+
+          // Find the immediate item under the cursor
+          const elemUnderCursor = document.elementFromPoint(
+            e.clientX,
+            e.clientY
+          );
+          const itemUnderCursor = elemUnderCursor?.closest(".set-pattern");
+
+          if (itemUnderCursor && itemUnderCursor !== draggedItem) {
+            // We're directly over an item
+            const rect = itemUnderCursor.getBoundingClientRect();
+            const mouseX = e.clientX;
+
+            // Determine if we're on the left or right half of the item
+            const itemCenter = rect.left + rect.width / 2;
+            const beforeItem = mouseX < itemCenter;
+
+            // Only update indicator if position changed
+            if (targetItem !== itemUnderCursor || insertBefore !== beforeItem) {
+              targetItem = itemUnderCursor;
+              insertBefore = beforeItem;
+
+              // Position the indicator
+              positionIndicator(
+                itemUnderCursor,
+                beforeItem ? "before" : "after"
+              );
+            }
           } else {
-            container.appendChild(dragging);
+            // We're in empty space - find the nearest item
+            let closestItem = null;
+            let minDistance = Infinity;
+            let closestPosition = "after";
+
+            items.forEach((item) => {
+              if (item === draggedItem) return;
+
+              const rect = item.getBoundingClientRect();
+
+              // Calculate distances to left and right edges
+              const distToLeft = Math.abs(e.clientX - rect.left);
+              const distToRight = Math.abs(e.clientX - rect.right);
+
+              if (distToLeft < minDistance) {
+                closestItem = item;
+                minDistance = distToLeft;
+                closestPosition = "before";
+              }
+
+              if (distToRight < minDistance) {
+                closestItem = item;
+                minDistance = distToRight;
+                closestPosition = "after";
+              }
+            });
+
+            if (closestItem) {
+              if (
+                targetItem !== closestItem ||
+                insertBefore !== (closestPosition === "before")
+              ) {
+                targetItem = closestItem;
+                insertBefore = closestPosition === "before";
+                positionIndicator(closestItem, closestPosition);
+              }
+            } else {
+              // Fallback to start of container
+              positionIndicatorAtStart();
+            }
+          }
+
+          function positionIndicator(element, position) {
+            const rect = element.getBoundingClientRect();
+            const scrollTop =
+              window.scrollY || document.documentElement.scrollTop;
+            const scrollLeft =
+              window.scrollX || document.documentElement.scrollLeft;
+
+            dropIndicator.style.display = "block";
+            dropIndicator.style.height = `${rect.height}px`;
+            dropIndicator.style.width = "4px";
+            dropIndicator.style.position = "absolute";
+            dropIndicator.style.backgroundColor = "var(--primary-color)";
+            dropIndicator.style.borderRadius = "2px";
+            dropIndicator.style.zIndex = "10000";
+            dropIndicator.style.boxShadow = "0 0 5px rgba(0,0,0,0.3)";
+
+            if (position === "before") {
+              dropIndicator.style.left = `${rect.left + scrollLeft - 2}px`;
+            } else {
+              dropIndicator.style.left = `${rect.right + scrollLeft - 2}px`;
+            }
+
+            dropIndicator.style.top = `${rect.top + scrollTop}px`;
+          }
+
+          function positionIndicatorAtStart() {
+            const rect = containerRect;
+            const scrollTop =
+              window.scrollY || document.documentElement.scrollTop;
+            const scrollLeft =
+              window.scrollX || document.documentElement.scrollLeft;
+
+            dropIndicator.style.display = "block";
+            dropIndicator.style.height = `${
+              items[0]?.getBoundingClientRect().height || 32
+            }px`;
+            dropIndicator.style.width = "4px";
+            dropIndicator.style.position = "absolute";
+            dropIndicator.style.backgroundColor = "var(--primary-color)";
+            dropIndicator.style.borderRadius = "2px";
+            dropIndicator.style.zIndex = "10000";
+            dropIndicator.style.boxShadow = "0 0 5px rgba(0,0,0,0.3)";
+
+            dropIndicator.style.left = `${rect.left + scrollLeft + 5}px`;
+            dropIndicator.style.top = `${rect.top + scrollTop + 5}px`;
+
+            targetItem = null;
+            insertBefore = true;
+          }
+        });
+
+        container.addEventListener("dragleave", (e) => {
+          // Only hide indicator if leaving the container itself
+          if (!container.contains(e.relatedTarget)) {
+            dropIndicator.style.display = "none";
+            targetItem = null;
           }
         });
 
         container.addEventListener("drop", (e) => {
           e.preventDefault();
-          const patternId = e.dataTransfer.getData("text/plain");
+          dropIndicator.style.display = "none";
+
+          if (!draggedItem) return;
+
+          const patternId = draggedItem.getAttribute("data-id");
           const setId = container
             .closest(".set-item")
             .querySelector('[data-action="edit"]')
             .getAttribute("data-id");
 
-          // Update pattern orders
+          if (targetItem) {
+            // If we have a target and insert position
+            if (insertBefore) {
+              // Insert before target
+              if (
+                targetItem !== draggedItem &&
+                targetItem.previousSibling !== draggedItem
+              ) {
+                container.insertBefore(draggedItem, targetItem);
+              }
+            } else {
+              // Insert after target
+              if (
+                targetItem !== draggedItem &&
+                targetItem.nextSibling !== draggedItem
+              ) {
+                if (targetItem.nextSibling) {
+                  container.insertBefore(draggedItem, targetItem.nextSibling);
+                } else {
+                  container.appendChild(draggedItem);
+                }
+              }
+            }
+          } else {
+            // Default to appending at the end
+            container.appendChild(draggedItem);
+          }
+
+          // Update pattern orders in data model
           const patterns = container.querySelectorAll(".set-pattern");
           patterns.forEach((pattern, index) => {
             const id = pattern.getAttribute("data-id");
@@ -2974,8 +3158,27 @@ CURRENT BUG LIST (address later)
             }
           });
 
+          // Update set patterns array order
+          if (appData.sets[setId]) {
+            const newOrder = Array.from(patterns).map((p) =>
+              p.getAttribute("data-id")
+            );
+            appData.sets[setId].patterns = newOrder;
+          }
+
+          // Save to localStorage
           saveDataToLocalStorage();
+
+          // Clean up
+          targetItem = null;
         });
+
+        // Clean up when done
+        return () => {
+          if (document.body.contains(dropIndicator)) {
+            document.body.removeChild(dropIndicator);
+          }
+        };
       }
 
       // Helper function for drag and drop
@@ -3201,48 +3404,38 @@ CURRENT BUG LIST (address later)
 
       // Setup drag and drop for set editing
       // Improved setup for drag and drop in set editing
+      // Improved setup for drag and drop in set editing
+      // Improved setup for drag and drop in set editing
       function setupSetDragAndDrop(container) {
         if (!container) return;
 
         const patternItems = container.querySelectorAll(".set-pattern-item");
         let draggedItem = null;
+
+        // Create drop indicator
         let dropIndicator = document.createElement("div");
-
-        // Style the drop indicator (vertical line)
         dropIndicator.className = "drop-indicator";
-        dropIndicator.style.position = "absolute";
-        dropIndicator.style.width = "3px";
-        dropIndicator.style.background = "var(--primary-color)";
-        dropIndicator.style.borderRadius = "2px";
-        dropIndicator.style.zIndex = "10";
-        dropIndicator.style.display = "none";
-        container.appendChild(dropIndicator);
+        document.body.appendChild(dropIndicator);
 
+        // Position container to allow absolute positioning within
+        if (window.getComputedStyle(container).position === "static") {
+          container.style.position = "relative";
+        }
+
+        // Initialize drag events
         patternItems.forEach((item) => {
           item.setAttribute("draggable", "true");
 
           item.addEventListener("dragstart", (e) => {
             draggedItem = item;
             e.dataTransfer.setData("text/plain", item.getAttribute("data-id"));
-
-            // Add a slight delay before adding the class for visual feedback
-            setTimeout(() => {
-              item.classList.add("dragging");
-            }, 0);
-
-            // Set drag image (optional - improves visual feedback)
-            if (e.dataTransfer.setDragImage) {
-              const img = item.querySelector("img");
-              if (img) {
-                e.dataTransfer.setDragImage(img, img.width / 2, img.height / 2);
-              }
-            }
+            setTimeout(() => item.classList.add("dragging"), 0);
           });
 
           item.addEventListener("dragend", () => {
-            draggedItem = null;
             item.classList.remove("dragging");
             dropIndicator.style.display = "none";
+            draggedItem = null;
           });
 
           // Prevent opening pattern detail when clicking on a pattern in edit mode
@@ -3251,101 +3444,203 @@ CURRENT BUG LIST (address later)
           });
         });
 
+        // Track last insert position to prevent constant repositioning
+        let lastInsertPosition = null;
+        let targetItem = null;
+        let insertBefore = true;
+
         container.addEventListener("dragover", (e) => {
           e.preventDefault();
           e.dataTransfer.dropEffect = "move";
 
           if (!draggedItem) return;
 
-          // Get mouse coordinates relative to container
+          // Get container position
           const containerRect = container.getBoundingClientRect();
-          const mouseX = e.clientX - containerRect.left;
-          const mouseY = e.clientY - containerRect.top;
 
-          // Find the element the cursor is hovering over
-          const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
-          const itemBelow = elemBelow?.closest(".set-pattern-item");
+          // Find possible drop positions
+          const items = [...container.querySelectorAll(".set-pattern-item")];
 
-          if (itemBelow && itemBelow !== draggedItem) {
-            const itemRect = itemBelow.getBoundingClientRect();
-            const itemCenter = itemRect.left + itemRect.width / 2;
-            const isAfter = e.clientX > itemCenter;
+          // If no items or only the dragged item, position at the start
+          if (items.length <= 1) {
+            positionIndicatorAtStart();
+            return;
+          }
 
-            // Position drop indicator
-            dropIndicator.style.display = "block";
-            dropIndicator.style.height = `${itemRect.height}px`;
+          // Find the immediate item under the cursor
+          const elemUnderCursor = document.elementFromPoint(
+            e.clientX,
+            e.clientY
+          );
+          const itemUnderCursor = elemUnderCursor?.closest(".set-pattern-item");
 
-            if (isAfter) {
-              dropIndicator.style.left = `${
-                itemRect.right - containerRect.left
-              }px`;
-              dropIndicator.style.top = `${itemRect.top - containerRect.top}px`;
-              container.insertBefore(dropIndicator, itemBelow.nextSibling);
+          if (itemUnderCursor && itemUnderCursor !== draggedItem) {
+            // We're directly over an item
+            const rect = itemUnderCursor.getBoundingClientRect();
+            const mouseX = e.clientX;
+
+            // Determine if we're on the left or right half of the item
+            const itemCenter = rect.left + rect.width / 2;
+            const beforeItem = mouseX < itemCenter;
+
+            // Only update indicator if position changed
+            if (targetItem !== itemUnderCursor || insertBefore !== beforeItem) {
+              targetItem = itemUnderCursor;
+              insertBefore = beforeItem;
+
+              // Position the indicator
+              positionIndicator(
+                itemUnderCursor,
+                beforeItem ? "before" : "after"
+              );
+            }
+          } else {
+            // We're in empty space - find the nearest item
+            let closestItem = null;
+            let minDistance = Infinity;
+            let closestPosition = "after";
+
+            items.forEach((item) => {
+              if (item === draggedItem) return;
+
+              const rect = item.getBoundingClientRect();
+
+              // Calculate distances to left and right edges
+              const distToLeft = Math.abs(e.clientX - rect.left);
+              const distToRight = Math.abs(e.clientX - rect.right);
+
+              if (distToLeft < minDistance) {
+                closestItem = item;
+                minDistance = distToLeft;
+                closestPosition = "before";
+              }
+
+              if (distToRight < minDistance) {
+                closestItem = item;
+                minDistance = distToRight;
+                closestPosition = "after";
+              }
+            });
+
+            if (closestItem) {
+              if (
+                targetItem !== closestItem ||
+                insertBefore !== (closestPosition === "before")
+              ) {
+                targetItem = closestItem;
+                insertBefore = closestPosition === "before";
+                positionIndicator(closestItem, closestPosition);
+              }
             } else {
-              dropIndicator.style.left = `${
-                itemRect.left - containerRect.left
-              }px`;
-              dropIndicator.style.top = `${itemRect.top - containerRect.top}px`;
-              container.insertBefore(dropIndicator, itemBelow);
+              // Fallback to start of container
+              positionIndicatorAtStart();
             }
-          } else if (!itemBelow && container.children.length > 0) {
-            // If hovering over empty space in the container, position at the end
-            const lastItem = container.querySelector(
-              ".set-pattern-item:last-child"
-            );
-            if (lastItem) {
-              const lastRect = lastItem.getBoundingClientRect();
-              dropIndicator.style.display = "block";
-              dropIndicator.style.height = `${lastRect.height}px`;
-              dropIndicator.style.left = `${
-                lastRect.right - containerRect.left + 5
-              }px`;
-              dropIndicator.style.top = `${lastRect.top - containerRect.top}px`;
-              container.appendChild(dropIndicator);
+          }
+
+          function positionIndicator(element, position) {
+            const rect = element.getBoundingClientRect();
+            const scrollTop =
+              window.scrollY || document.documentElement.scrollTop;
+            const scrollLeft =
+              window.scrollX || document.documentElement.scrollLeft;
+
+            dropIndicator.style.display = "block";
+            dropIndicator.style.height = `${rect.height}px`;
+            dropIndicator.style.width = "4px";
+            dropIndicator.style.position = "absolute";
+            dropIndicator.style.backgroundColor = "var(--primary-color)";
+            dropIndicator.style.borderRadius = "2px";
+            dropIndicator.style.zIndex = "10000";
+            dropIndicator.style.boxShadow = "0 0 5px rgba(0,0,0,0.3)";
+
+            if (position === "before") {
+              dropIndicator.style.left = `${rect.left + scrollLeft - 2}px`;
+            } else {
+              dropIndicator.style.left = `${rect.right + scrollLeft - 2}px`;
             }
+
+            dropIndicator.style.top = `${rect.top + scrollTop}px`;
+          }
+
+          function positionIndicatorAtStart() {
+            const rect = containerRect;
+            const scrollTop =
+              window.scrollY || document.documentElement.scrollTop;
+            const scrollLeft =
+              window.scrollX || document.documentElement.scrollLeft;
+
+            dropIndicator.style.display = "block";
+            dropIndicator.style.height = `50px`;
+            dropIndicator.style.width = "4px";
+            dropIndicator.style.position = "absolute";
+            dropIndicator.style.backgroundColor = "var(--primary-color)";
+            dropIndicator.style.borderRadius = "2px";
+            dropIndicator.style.zIndex = "10000";
+            dropIndicator.style.boxShadow = "0 0 5px rgba(0,0,0,0.3)";
+
+            dropIndicator.style.left = `${rect.left + scrollLeft + 5}px`;
+            dropIndicator.style.top = `${rect.top + scrollTop + 10}px`;
+
+            targetItem = null;
+            insertBefore = true;
           }
         });
 
         container.addEventListener("dragleave", (e) => {
           // Only hide indicator if leaving the container itself
-          if (e.target === container) {
+          if (!container.contains(e.relatedTarget)) {
             dropIndicator.style.display = "none";
+            targetItem = null;
           }
         });
 
         container.addEventListener("drop", (e) => {
           e.preventDefault();
-          dropIndicator.style.display = "none";
 
           if (!draggedItem) return;
 
-          // Get the item we're hovering over
-          const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
-          const itemBelow = elemBelow?.closest(".set-pattern-item");
-
-          // If dropping on another item, determine whether to place before or after
-          if (itemBelow && itemBelow !== draggedItem) {
-            const itemRect = itemBelow.getBoundingClientRect();
-            const itemCenter = itemRect.left + itemRect.width / 2;
-            const isAfter = e.clientX > itemCenter;
-
-            if (isAfter) {
-              if (itemBelow.nextSibling) {
-                container.insertBefore(draggedItem, itemBelow.nextSibling);
-              } else {
-                container.appendChild(draggedItem);
+          if (targetItem) {
+            // If we have a target and insert position
+            if (insertBefore) {
+              // Insert before target
+              if (
+                targetItem !== draggedItem &&
+                targetItem.previousSibling !== draggedItem
+              ) {
+                container.insertBefore(draggedItem, targetItem);
               }
             } else {
-              container.insertBefore(draggedItem, itemBelow);
+              // Insert after target
+              if (
+                targetItem !== draggedItem &&
+                targetItem.nextSibling !== draggedItem
+              ) {
+                if (targetItem.nextSibling) {
+                  container.insertBefore(draggedItem, targetItem.nextSibling);
+                } else {
+                  container.appendChild(draggedItem);
+                }
+              }
             }
           } else {
-            // If dropping in empty space, append to the end
+            // Default to appending at the end
             container.appendChild(draggedItem);
           }
+
+          // Clean up
+          dropIndicator.style.display = "none";
+          targetItem = null;
 
           // Update order numbers
           updatePatternOrders(container);
         });
+
+        // Clean up when done
+        return () => {
+          if (document.body.contains(dropIndicator)) {
+            document.body.removeChild(dropIndicator);
+          }
+        };
       }
 
       // Get element to insert after when dragging

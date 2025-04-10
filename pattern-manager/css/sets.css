@@ -101,6 +101,22 @@
   pointer-events: none;
   box-shadow: 0 0 5px var(--primary-color);
 }
+.set-pattern.dragging {
+  opacity: 0.6;
+  transform: scale(0.95);
+  box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+  z-index: 1000;
+}
+
+.set-patterns {
+  position: relative; /* For proper positioning */
+}
+
+/* Smooth transitions to reduce visual juddering */
+.drop-indicator {
+  transition: all 0.05s ease-out;
+  pointer-events: none; /* Don't block mouse events */
+}
 
 /* Add Pattern Modal */
 .creator-filter-info {
