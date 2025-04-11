@@ -15,6 +15,7 @@ CURRENT BUG LIST (address later)
 [ ] Clicking outside a modal should close it
 [ ] Clicking on a set in select mode should open the edit set modal
 [ ] pattern set selection action thingy shouldn't appear on other tabs at all
+[ ] set order should account for # of empty spaces & those should sort before full sets
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -844,6 +845,7 @@ CURRENT BUG LIST (address later)
 
               return (
                 pattern.patternName.toLowerCase().includes(searchTerm) ||
+                pattern.alternateName.toLowerCase().includes(searchTerm) ||
                 pattern.creatorName.toLowerCase().includes(searchTerm)
               );
             });
@@ -1269,7 +1271,7 @@ CURRENT BUG LIST (address later)
               allItems.push({
                 isSet: false,
                 pattern: pattern,
-                name: pattern.patternName,
+                name: pattern.alternateName || pattern.patternName,
                 gridSize: "not-in-set", // For individual patterns
               });
             }
@@ -1282,12 +1284,12 @@ CURRENT BUG LIST (address later)
             "1x2",
             "1x3",
             "1x4",
-            "2x3", // 6-pattern grid (2 rows, 3 columns)
-            "2x4", // 8-pattern grid (2 rows, 4 columns)
             "2x1", // 2-pattern grids
             "3x1", // 3-pattern grids
             "4x1", // 4-pattern line grids
             "2x2", // 4-pattern square grid
+            "2x3", // 6-pattern grid (2 rows, 3 columns)
+            "2x4", // 8-pattern grid (2 rows, 4 columns)
             "3x3", // 9-pattern square grid
             "4x4", // 16-pattern square grid
           ];
@@ -3689,33 +3691,33 @@ CURRENT BUG LIST (address later)
 
           // Create set HTML
           setItem.innerHTML = `
-      <div class="set-header">
-        <h3>
-          ${set.name}
-          <span class="set-counter">${setPatterns.length}</span>
-        </h3>
-        <div class="set-creator">by ${creatorInfo.name} of ${
-            creatorInfo.town
-          }</div>
-        ${
-          set.gridSize
-            ? `<div class="set-grid-info">${set.gridSize} grid</div>`
-            : ""
-        }
-        ${set.notes ? `<p>${set.notes}</p>` : ""}
-      </div>
-      
-      ${gridHTML}
-      
-      <div class="set-actions">
-        <button class="btn btn-secondary" data-action="edit" data-id="${
-          set.id
-        }">Edit</button>
-        <button class="btn btn-secondary" data-action="delete" data-id="${
-          set.id
-        }">Delete</button>
-      </div>
-    `;
+            <div class="set-header">
+              <h3>
+                ${set.name}
+                <span class="set-counter">${setPatterns.length}</span>
+              </h3>
+              <div class="set-creator">by ${creatorInfo.name} of ${
+                  creatorInfo.town
+                }</div>
+              ${
+                set.gridSize
+                  ? `<div class="set-grid-info">${set.gridSize} grid</div>`
+                  : ""
+              }
+              ${set.notes ? `<p>${set.notes}</p>` : ""}
+            </div>
+            
+            ${gridHTML}
+            
+            <div class="set-actions">
+              <button class="btn btn-secondary" data-action="edit" data-id="${
+                set.id
+              }">Edit</button>
+              <button class="btn btn-secondary" data-action="delete" data-id="${
+                set.id
+              }">Delete</button>
+            </div>
+          `;
 
           // Add click event for grid items to show pattern details
           setItem
@@ -5027,11 +5029,11 @@ CURRENT BUG LIST (address later)
             <button class="modal-close">&times;</button>
             <h2 class="modal-title">${set.name}</h2>
             
-            <div class="set-detail-info">
+            <div class="set-detail-info full-width">
               <div class="creator-info">
                 <strong>Creator:</strong> ${creatorInfo.name} of ${
-          creatorInfo.town
-        }
+                  creatorInfo.town
+                }
               </div>
               <div class="set-detail-meta">
                 <div><strong>Patterns:</strong> ${patterns.length}</div>
@@ -5044,11 +5046,11 @@ CURRENT BUG LIST (address later)
               ${set.notes ? `<div class="set-notes">${set.notes}</div>` : ""}
             </div>
             
-            <div class="set-patterns-container">
+            <div class="set-patterns-container full-width">
               ${patternsHTML}
             </div>
             
-            <div class="set-actions">
+            <div class="set-actions full-width">
               <button class="btn" id="edit-set-btn" data-id="${setId}">Edit Set</button>
             </div>
           </div>
