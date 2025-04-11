@@ -1361,30 +1361,47 @@ CURRENT BUG LIST (address later)
 
           // Tag filters - only apply if tags filter is active
           if (appData.activeFilters.tags.size > 0) {
-            const hasMatchingTag = Array.from(appData.activeFilters.tags).some(
-              (filterTag) => {
-                // Simple case: direct tag match
-                if (
-                  pattern.tags.some(
-                    (patternTag) => patternTag.toLowerCase() === filterTag
-                  )
-                ) {
-                  return true;
-                }
+            return Array.from(appData.activeFilters.tags).every((filterTag) => {
+              // Handle special case: parent>untagged
+              if (filterTag.endsWith(">untagged")) {
+                const parentTag = filterTag.split(">untagged")[0].toLowerCase();
+                const patternTagsLower = pattern.tags.map((t) =>
+                  t.toLowerCase()
+                );
 
-                // Hierarchical case: if filter is a parent tag, also match child tags
-                return pattern.tags.some((patternTag) => {
-                  // Convert both to lowercase for case-insensitive comparison
-                  const lowercasePatternTag = patternTag.toLowerCase();
-                  // Check if this pattern tag starts with the filter tag followed by ">"
-                  return (
-                    lowercasePatternTag.startsWith(filterTag + ">") ||
-                    // Also check for exact match (redundant with above, but keeping for clarity)
-                    lowercasePatternTag === filterTag
-                  );
-                });
+                // Pattern must have the parent tag
+                const hasParentTag = patternTagsLower.includes(parentTag);
+
+                // But must NOT have any child tags of that parent
+                const hasChildTag = patternTagsLower.some(
+                  (tag) => tag !== parentTag && tag.startsWith(parentTag + ">")
+                );
+
+                const result = hasParentTag && !hasChildTag;
+                return result;
               }
-            );
+
+              // Simple case: direct tag match
+              if (
+                pattern.tags.some(
+                  (patternTag) => patternTag.toLowerCase() === filterTag
+                )
+              ) {
+                return true;
+              }
+
+              // Hierarchical case: if filter is a parent tag, also match child tags
+              return pattern.tags.some((patternTag) => {
+                // Convert both to lowercase for case-insensitive comparison
+                const lowercasePatternTag = patternTag.toLowerCase();
+                // Check if this pattern tag starts with the filter tag followed by ">"
+                return (
+                  lowercasePatternTag.startsWith(filterTag + ">") ||
+                  // Also check for exact match (redundant with above, but keeping for clarity)
+                  lowercasePatternTag === filterTag
+                );
+              });
+            });
 
             if (!hasMatchingTag) return false;
           }
@@ -2434,8 +2451,58 @@ CURRENT BUG LIST (address later)
           });
       }
 
+      function logPatternTagCounts() {
+        // Build parent-only tag counts - these are patterns that have only the parent tag
+        // but none of the child tags
+        const parentOnlyTagCounts = {};
+
+        // First, collect all parent tags
+        const parentTags = new Set();
+        const allTags = new Set();
+
+        // Collect all tags first
+        Object.values(appData.patterns).forEach((pattern) => {
+          pattern.tags.forEach((tag) => {
+            const tagLower = tag.toLowerCase();
+            allTags.add(tagLower);
+
+            if (tagLower.includes(">")) {
+              const parent = tagLower.split(">")[0];
+              parentTags.add(parent);
+            }
+          });
+        });
+
+        // Now count patterns that have ONLY the parent tag without any child tags
+        Object.values(appData.patterns).forEach((pattern) => {
+          const patternTagsLower = pattern.tags.map((t) => t.toLowerCase());
+
+          // Check each parent tag
+          parentTags.forEach((parentTag) => {
+            // If the pattern has the parent tag
+            if (patternTagsLower.includes(parentTag)) {
+              // Check if it has any child tags
+              const hasChildTag = patternTagsLower.some(
+                (tag) => tag !== parentTag && tag.startsWith(parentTag + ">")
+              );
+
+              // If it doesn't have any child tags, count it as "parent-only"
+              if (!hasChildTag) {
+                parentOnlyTagCounts[parentTag] =
+                  (parentOnlyTagCounts[parentTag] || 0) + 1;
+              }
+            }
+          });
+        });
+
+        return parentOnlyTagCounts;
+      }
+
       // Render sidebar filters
       function renderSidebarFilters() {
+        // Get parent-only tag counts
+        const parentOnlyTagCounts = logPatternTagCounts();
+
         // Render tag filters
         const allTags = new Map();
         Object.values(appData.patterns).forEach((pattern) => {
@@ -2445,19 +2512,19 @@ CURRENT BUG LIST (address later)
           });
         });
 
-        // Count untagged patterns
+        // Count untagged patterns (no tags at all)
         const untaggedCount = Object.values(appData.patterns).filter(
           (pattern) => pattern.tags.length === 0
         ).length;
 
         // Create the untagged filter HTML
         const untaggedFilterHTML = `
-    <li class="${
-      appData.activeFilters.untagged ? "active" : ""
-    }" data-filter="untagged">
-      untagged 
-      <span class="filter-count">${untaggedCount}</span>
-    </li>`;
+          <li class="${
+            appData.activeFilters.untagged ? "active" : ""
+          }" data-filter="untagged">
+            untagged 
+            <span class="filter-count">${untaggedCount}</span>
+          </li>`;
 
         // Group tags into a hierarchical structure
         const tagHierarchy = {};
@@ -2474,8 +2541,8 @@ CURRENT BUG LIST (address later)
             }
           } else {
             // This is a nested tag, add to parent
-            const parentTag = segments.slice(0, -1).join(">");
-            const childTag = segments[segments.length - 1];
+            const parentTag = segments[0]; // Get top-level parent
+            const childTag = segments.slice(1).join(">"); // Rest is the child
 
             // Ensure parent exists
             if (!tagHierarchy[parentTag]) {
@@ -2516,16 +2583,22 @@ CURRENT BUG LIST (address later)
                 appData.activeFilters.tags.has(child.fullTag)
               );
 
+            // Check if the parent>untagged filter is active
+            const isParentUntaggedActive = appData.activeFilters.tags.has(
+              `${tag}>untagged`
+            );
+
             // Determine if this parent should appear expanded based on if it or any of its children are active
-            const shouldExpand = isActive || isParentOfActiveChild;
+            const shouldExpand =
+              isActive || isParentOfActiveChild || isParentUntaggedActive;
 
             tagFiltersHTML += `
-        <li class="${isActive ? "active" : ""} ${
+              <li class="${isActive ? "active" : ""} ${
               hasChildren ? "tag-parent" : ""
             }" data-tag="${tag}">
-          ${tag} 
-          <span class="filter-count">${tagHierarchy[tag].count}</span>
-        </li>`;
+                ${tag} 
+                <span class="filter-count">${tagHierarchy[tag].count}</span>
+              </li>`;
 
             if (hasChildren) {
               // Determine visibility based on whether parent or any child is active
@@ -2533,6 +2606,23 @@ CURRENT BUG LIST (address later)
 
               tagFiltersHTML += `<div class="tag-children ${visibilityClass}">`;
 
+              // Add "untagged" option within the parent tag if there are patterns with only the parent tag
+              const parentOnlyCount = parentOnlyTagCounts[tag] || 0;
+              if (parentOnlyCount > 0) {
+                const specialFilterTag = `${tag}>untagged`;
+                const isUntaggedActive =
+                  appData.activeFilters.tags.has(specialFilterTag);
+
+                tagFiltersHTML += `
+                  <li class="${
+                    isUntaggedActive ? "active" : ""
+                  } level-1" data-tag="${specialFilterTag}">
+                    no child tag
+                    <span class="filter-count">${parentOnlyCount}</span>
+                  </li>`;
+              }
+
+              // Then add all the regular child tags
               Object.keys(tagHierarchy[tag].children)
                 .sort()
                 .forEach((childTag) => {
@@ -2542,12 +2632,12 @@ CURRENT BUG LIST (address later)
                   );
 
                   tagFiltersHTML += `
-              <li class="${childIsActive ? "active" : ""} level-1" data-tag="${
-                    child.fullTag
-                  }">
-                ${childTag} 
-                <span class="filter-count">${child.count}</span>
-              </li>`;
+                    <li class="${childIsActive ? "active" : ""} level-1" data-tag="${
+                          child.fullTag
+                        }">
+                      ${childTag.split(">")[0]} 
+                      <span class="filter-count">${child.count}</span>
+                    </li>`;
                 });
 
               tagFiltersHTML += `</div>`;
