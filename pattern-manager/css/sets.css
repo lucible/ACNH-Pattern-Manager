@@ -15,7 +15,11 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   width: 15%;
   transition: width 0.3s ease;
-  height: fit-content;
+  display: flex;
+  flex-direction: column;
+}
+.set-actions {
+  margin-top: auto;
 }
 
 /* Pattern Display Within Card */
