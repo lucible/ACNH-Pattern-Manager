@@ -202,6 +202,14 @@ CURRENT BUG LIST (address later)
               <input type="text" id="pattern-name" disabled />
             </div>
             <div class="form-group">
+              <label for="pattern-alternate-name">Alternate Name</label>
+              <input
+                type="text"
+                id="pattern-alternate-name"
+                placeholder="Optional alternate/translated name"
+              />
+            </div>
+            <div class="form-group">
               <label for="creator-name">Creator</label>
               <input type="text" id="creator-name" disabled />
             </div>
@@ -249,16 +257,18 @@ CURRENT BUG LIST (address later)
         <div class="form-group">
           <label for="set-grid-size">Grid Size (Optional)</label>
           <select id="set-grid-size">
-            <option value="">No Grid (Collection of Patterns)</option>
+            <option value="">No Grid (Pattern Collection)</option>
             <option value="2x2">2 × 2 Grid</option>
             <option value="3x3">3 × 3 Grid</option>
             <option value="4x4">4 × 4 Grid</option>
-            <option value="2x1">2 × 1 Grid (Vertical)</option>
-            <option value="1x2">1 × 2 Grid (Horizontal)</option>
-            <option value="3x1">3 × 1 Grid (Vertical)</option>
-            <option value="1x3">1 × 3 Grid (Horizontal)</option>
-            <option value="4x1">1 × 4 Grid (Vertical)</option>
-            <option value="1x4">4 × 1 Grid (Horizontal)</option>
+            <option value="1x2">1 × 2 Grid (Horiz)</option>
+            <option value="1x3">1 × 3 Grid (Horiz)</option>
+            <option value="1x4">1 × 4 Grid (Horiz)</option>
+            <option value="2x3">2 × 3 Grid (Horiz)</option>
+            <option value="2x4">2 × 4 Grid (Horiz)</option>
+            <option value="2x1">2 × 1 Grid (Vert)</option>
+            <option value="3x1">3 × 1 Grid (Vert)</option>
+            <option value="4x1">4 × 1 Grid (Vert)</option>
           </select>
           <p class="help-text">
             Select a grid size if this set forms a larger image when combined,
@@ -888,7 +898,7 @@ CURRENT BUG LIST (address later)
               allItems.push({
                 isSet: false,
                 pattern: pattern,
-                name: pattern.patternName, // For sorting
+                name: pattern.alternateName || pattern.patternName, // For sorting
               });
             }
           });
@@ -955,7 +965,7 @@ CURRENT BUG LIST (address later)
             creatorGroups[creatorName].push({
               isSet: false,
               pattern: pattern,
-              name: pattern.patternName, // For sorting within creator group
+              name: pattern.alternateName || pattern.patternName, // For sorting within creator group
             });
           });
 
@@ -1078,7 +1088,7 @@ CURRENT BUG LIST (address later)
               tagGroups["untagged"].push({
                 isSet: false,
                 pattern: pattern,
-                name: pattern.patternName,
+                name: pattern.alternateName || pattern.patternName,
                 topLevelTag: "untagged",
                 subTags: [],
               });
@@ -1097,7 +1107,7 @@ CURRENT BUG LIST (address later)
             tagGroups[topLevelTag].push({
               isSet: false,
               pattern: pattern,
-              name: pattern.patternName,
+              name: pattern.alternateName || pattern.patternName,
               topLevelTag: topLevelTag,
               subTags: getPatternSubTags(pattern),
             });
@@ -1270,12 +1280,14 @@ CURRENT BUG LIST (address later)
             "not-in-set", // Individual patterns not in sets
             "no-grid", // Collection sets without grid
             "1x2",
-            "2x1", // 2-pattern grids
-            "2x2", // 4-pattern square grid
             "1x3",
-            "3x1", // 3-pattern grids
             "1x4",
+            "2x3", // 6-pattern grid (2 rows, 3 columns)
+            "2x4", // 8-pattern grid (2 rows, 4 columns)
+            "2x1", // 2-pattern grids
+            "3x1", // 3-pattern grids
             "4x1", // 4-pattern line grids
+            "2x2", // 4-pattern square grid
             "3x3", // 9-pattern square grid
             "4x4", // 16-pattern square grid
           ];
@@ -1329,6 +1341,12 @@ CURRENT BUG LIST (address later)
             !pattern.patternName
               .toLowerCase()
               .includes(appData.activeFilters.search) &&
+            !(
+              pattern.alternateName &&
+              pattern.alternateName
+                .toLowerCase()
+                .includes(appData.activeFilters.search)
+            ) &&
             !pattern.creatorName
               .toLowerCase()
               .includes(appData.activeFilters.search)
@@ -1699,14 +1717,15 @@ CURRENT BUG LIST (address later)
         // Remove duplicates (in case after trimming parent path we have duplicates)
         const uniqueDisplayTags = [...new Set(displayTags)];
 
+        // Get display name if alternate is set
+        const displayName = pattern.alternateName || pattern.patternName;
+
         const html = `
           ${selectionCheckbox}
-          <img class="pattern-thumbnail" src="${thumbnailSrc}" alt="${
-          pattern.patternName
-        }">
+          <img class="pattern-thumbnail" src="${thumbnailSrc}" alt="${displayName}">
             ${creatorBadge}
             <div class="pattern-info">
-            <div class="pattern-name">${pattern.patternName}</div>
+            <div class="pattern-name">${displayName}</div>
             <div class="pattern-creator">by ${pattern.creatorName} of ${
           pattern.townName
         }</div>
@@ -1914,29 +1933,29 @@ CURRENT BUG LIST (address later)
         modal.style.display = "flex";
 
         modal.innerHTML = `
-    <div class="modal">
-      <button class="modal-close">&times;</button>
-      <h2 class="modal-title">Edit Tags for ${appData.selectedPatterns.size} Patterns</h2>
-      
-      <div class="form-group full-width">
-        <label>Edit Tags</label>
-        <div class="tag-input" id="batch-tag-input">
-          <input type="text" placeholder="Add a tag...">
-        </div>
-        <p class="help-text">Enter each tag and press Enter or comma to add. Remove tags by clicking the × button.</p>
-        <p class="help-text">Use > for hierarchical tags (e.g., "clothing>shirt>long-sleeve").</p>
-      </div>
-      
-      <div class="form-group full-width" style="display: flex;">
-        <input type="checkbox" id="batch-tag-merge" checked style="width: unset; margin-right: 7px;">
-        <label>
-          Merge with existing tags (uncheck to replace all tags)
-        </label>
-      </div>
-      
-      <button class="btn" id="apply-batch-tags-btn">Apply Tags</button>
-    </div>
-  `;
+          <div class="modal">
+            <button class="modal-close">&times;</button>
+            <h2 class="modal-title">Edit Tags for ${appData.selectedPatterns.size} Patterns</h2>
+            
+            <div class="form-group full-width">
+              <label>Edit Tags</label>
+              <div class="tag-input" id="batch-tag-input">
+                <input type="text" placeholder="Add a tag...">
+              </div>
+              <p class="help-text">Enter each tag and press Enter or comma to add. Remove tags by clicking the × button.</p>
+              <p class="help-text">Use > for hierarchical tags (e.g., "clothing>shirt>long-sleeve").</p>
+            </div>
+            
+            <div class="form-group full-width" style="display: flex;">
+              <input type="checkbox" id="batch-tag-merge" checked style="width: unset; margin-right: 7px;">
+              <label>
+                Merge with existing tags (uncheck to replace all tags)
+              </label>
+            </div>
+            
+            <button class="btn" id="apply-batch-tags-btn">Apply Tags</button>
+          </div>
+        `;
 
         document.body.appendChild(modal);
 
@@ -2253,15 +2272,7 @@ CURRENT BUG LIST (address later)
         const tagElement = document.createElement("div");
         tagElement.className = "tag-item";
 
-        // Add visual indication for hierarchical tags
-        if (tag.includes(">")) {
-          const segments = tag.split(">");
-          const formattedTag = segments.join(" › ");
-          tagElement.innerHTML = `${formattedTag} <span class="tag-remove">×</span>`;
-          tagElement.title = "Hierarchical tag: " + tag;
-        } else {
-          tagElement.innerHTML = `${tag} <span class="tag-remove">×</span>`;
-        }
+        tagElement.innerHTML = `${tag} <span class="tag-remove">×</span>`;
 
         // Add click event to remove tag
         tagElement
@@ -2296,16 +2307,18 @@ CURRENT BUG LIST (address later)
             <div class="form-group">
               <label for="new-set-grid-size">Grid Size (Optional)</label>
               <select id="new-set-grid-size">
-                <option value="">No Grid (Collection of Patterns)</option>
+                <option value="">No Grid (Pattern Collection)</option>
                 <option value="2x2">2 × 2 Grid</option>
                 <option value="3x3">3 × 3 Grid</option>
                 <option value="4x4">4 × 4 Grid</option>
-                <option value="2x1">2 × 1 Grid (Vertical)</option>
-                <option value="1x2">1 × 2 Grid (Horizontal)</option>
-                <option value="3x1">3 × 1 Grid (Vertical)</option>
-                <option value="1x3">1 × 3 Grid (Horizontal)</option>
-                <option value="4x1">4 × 1 Grid (Vertical)</option>
-                <option value="1x4">1 × 4 Grid (Horizontal)</option>
+                <option value="1x2">1 × 2 Grid (Horiz)</option>
+                <option value="1x3">1 × 3 Grid (Horiz)</option>
+                <option value="1x4">1 × 4 Grid (Horiz)</option>
+                <option value="2x3">2 × 3 Grid (Horiz)</option>
+                <option value="2x4">2 × 4 Grid (Horiz)</option>
+                <option value="2x1">2 × 1 Grid (Vert)</option>
+                <option value="3x1">3 × 1 Grid (Vert)</option>
+                <option value="4x1">4 × 1 Grid (Vert)</option>
               </select>
               <p class="help-text">Select a grid size if this set forms a larger image when combined.</p>
             </div>
@@ -3025,6 +3038,8 @@ CURRENT BUG LIST (address later)
           .classList.add("pixel-art-image");
 
         document.getElementById("pattern-name").value = pattern.patternName;
+        document.getElementById("pattern-alternate-name").value =
+          pattern.alternateName || "";
         document.getElementById("creator-name").value = pattern.creatorName;
         document.getElementById("town-name").value = pattern.townName;
         document.getElementById("pattern-notes").value = pattern.notes || "";
@@ -3310,6 +3325,11 @@ CURRENT BUG LIST (address later)
 
         const pattern = appData.patterns[patternId];
 
+        // Get alternate name from input
+        const alternateName = document
+          .getElementById("pattern-alternate-name")
+          .value.trim();
+
         // Get current tags from tag elements
         const tagElements = document.querySelectorAll("#tag-input .tag-item");
         const tags = Array.from(tagElements).map((el) => {
@@ -3337,6 +3357,7 @@ CURRENT BUG LIST (address later)
         const notes = document.getElementById("pattern-notes").value.trim();
 
         // Update pattern
+        pattern.alternateName = alternateName;
         pattern.tags = tags;
         pattern.setId = setId;
         pattern.setName = setName;
@@ -3952,16 +3973,18 @@ CURRENT BUG LIST (address later)
           gridSizeFormGroup.innerHTML = `
             <label for="set-grid-size">Grid Size (Optional)</label>
             <select id="set-grid-size">
-              <option value="">No Grid (Collection of Patterns)</option>
-              <option value="2x2">2 × 2 Grid</option>
-              <option value="3x3">3 × 3 Grid</option>
-              <option value="4x4">4 × 4 Grid</option>
-              <option value="2x1">1 × 2 Grid (Vertical)</option>
-              <option value="1x2">2 × 1 Grid (Horizontal)</option>
-              <option value="3x1">1 × 3 Grid (Vertical)</option>
-              <option value="1x3">3 × 1 Grid (Horizontal)</option>
-              <option value="4x1">1 × 4 Grid (Vertical)</option>
-              <option value="1x4">4 × 1 Grid (Horizontal)</option>
+              <option value="">No Grid (Pattern Collection)</option>
+                <option value="2x2">2 × 2 Grid</option>
+                <option value="3x3">3 × 3 Grid</option>
+                <option value="4x4">4 × 4 Grid</option>
+                <option value="1x2">1 × 2 Grid (Horiz)</option>
+                <option value="1x3">1 × 3 Grid (Horiz)</option>
+                <option value="1x4">1 × 4 Grid (Horiz)</option>
+                <option value="2x3">2 × 3 Grid (Horiz)</option>
+                <option value="2x4">2 × 4 Grid (Horiz)</option>
+                <option value="2x1">2 × 1 Grid (Vert)</option>
+                <option value="3x1">3 × 1 Grid (Vert)</option>
+                <option value="4x1">4 × 1 Grid (Vert)</option>
             </select>
             <p class="help-text">Select a grid size if this set forms a larger image when combined, or leave as "No Grid" if it's just a collection.</p>
           `;
