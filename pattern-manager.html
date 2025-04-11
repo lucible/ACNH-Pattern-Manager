@@ -780,10 +780,17 @@ CURRENT BUG LIST (address later)
           // Skip empty sets
           if (!set.patterns || set.patterns.length === 0) return false;
 
-          // If untagged filter is active, skip sets (sets should contain patterns that are tagged)
-          // TODO: this is probably janky - sets may contain untagged patterns!
+          // For untagged filter, check if any pattern in the set is untagged
           if (appData.activeFilters.untagged) {
-            return false;
+            // Check if any pattern in the set has no tags
+            const hasUntaggedPattern = set.patterns.some((patternId) => {
+              const pattern = appData.patterns[patternId];
+              return pattern && pattern.tags.length === 0;
+            });
+
+            if (!hasUntaggedPattern) {
+              return false; // Skip this set if it has no untagged patterns
+            }
           }
 
           // For sets with a creator filter, check if any pattern in the set matches
@@ -2634,9 +2641,9 @@ CURRENT BUG LIST (address later)
                   );
 
                   tagFiltersHTML += `
-                    <li class="${childIsActive ? "active" : ""} level-1" data-tag="${
-                          child.fullTag
-                        }">
+                    <li class="${
+                      childIsActive ? "active" : ""
+                    } level-1" data-tag="${child.fullTag}">
                       ${childTag.split(">")[0]} 
                       <span class="filter-count">${child.count}</span>
                     </li>`;
